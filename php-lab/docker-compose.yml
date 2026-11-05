@@ -1,11 +1,28 @@
+version: '3.8'
+
 services:
   vulnerable:
     build:
       context: ./vulnerable
       dockerfile: Dockerfile
-    container_name: php-vuln
+    container_name: php2shell-vuln
     ports:
       - "8888:80"
     volumes:
       - ./vulnerable/www:/var/www/html
     restart: unless-stopped
+    environment:
+      - PHP_MEMORY_LIMIT=16M
+    
+  patched:
+    build:
+      context: ./patched
+      dockerfile: Dockerfile
+    container_name: php2shell-patched
+    ports:
+      - "8889:80"
+    volumes:
+      - ./patched/www:/var/www/html
+    restart: unless-stopped
+    environment:
+      - PHP_MEMORY_LIMIT=16M

