@@ -1,0 +1,11 @@
+services:
+  vulnerable:
+    build:
+      context: ./vulnerable
+      dockerfile: Dockerfile
+    container_name: php-vuln
+    ports:
+      - "8888:80"
+    volumes:
+      - ./vulnerable/www:/var/www/html
+    restart: unless-stopped
