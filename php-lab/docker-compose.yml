@@ -10,9 +10,15 @@ services:
       - "8888:80"
     volumes:
       - ./vulnerable/www:/var/www/html
+      - ./vulnerable/logs:/var/log/apache2
     restart: unless-stopped
     environment:
       - PHP_MEMORY_LIMIT=16M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     
   patched:
     build:
@@ -23,6 +29,21 @@ services:
       - "8889:80"
     volumes:
       - ./patched/www:/var/www/html
+      - ./patched/logs:/var/log/apache2
     restart: unless-stopped
     environment:
       - PHP_MEMORY_LIMIT=16M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+        
+  # Service de monitoring des logs
+  log-monitor:
+    image: alpine:latest
+    container_name: php2shell-log-monitor
+    command: sh -c "tail -f /var/log/apache2/*.log"
+    volumes:
+      - ./vulnerable/logs:/var/log/apache2
+    restart: unless-stopped

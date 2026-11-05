@@ -4,13 +4,16 @@ FROM debian:bookworm-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Installer les dépendances
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         apache2 \
         curl \
         gnupg2 \
         ca-certificates \
-        lsb-release && \
+        lsb-release \
+        tail \
+        net-tools && \
     # Ajouter le repo Sury pour PHP
     curl -fsSL https://packages.sury.org/php/apt.gpg | gpg --dearmor -o /usr/share/keyrings/sury-php.gpg && \
     echo "deb [signed-by=/usr/share/keyrings/sury-php.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/sury-php.list && \
@@ -34,6 +37,15 @@ RUN echo "session.upload_progress.enabled = 1" > /etc/php/8.4/apache2/conf.d/99-
     echo "session.upload_progress.cleanup = 0" >> /etc/php/8.4/apache2/conf.d/99-upload-progress.ini && \
     echo "session.upload_progress.prefix = upload_progress_" >> /etc/php/8.4/apache2/conf.d/99-upload-progress.ini
 
+# Configurer Apache pour des logs détaillés
+RUN echo "LogLevel alert" > /etc/apache2/conf-available/log-level.conf && \
+    echo "ErrorLog /var/log/apache2/php2shell-error.log" >> /etc/apache2/conf-available/log-level.conf && \
+    echo "CustomLog /var/log/apache2/php2shell-access.log combined" >> /etc/apache2/conf-available/log-level.conf && \
+    a2enconf log-level
+
+# Activer le module rewrite pour Apache
+RUN a2enmod rewrite
+
 # DirectoryIndex
 RUN printf '<IfModule mod_dir.c>\n    DirectoryIndex index.php index.html\n</IfModule>\n' > /etc/apache2/mods-available/dir.conf
 
@@ -41,11 +53,16 @@ RUN printf '<IfModule mod_dir.c>\n    DirectoryIndex index.php index.html\n</IfM
 COPY www/ /var/www/html/
 RUN rm -f /var/www/html/index.html
 
+# Créer le répertoire des logs
+RUN mkdir -p /var/log/apache2 && \
+    chown -R www-data:www-data /var/log/apache2
+
 RUN chown -R www-data:www-data /var/www/html && \
     chmod -R 755 /var/www/html
 
-# Activer le module rewrite pour Apache
-RUN a2enmod rewrite
+# Script de démarrage personnalisé pour afficher les logs
+COPY scripts/start-apache.sh /start-apache.sh
+RUN chmod +x /start-apache.sh
 
 EXPOSE 80
-CMD ["apachectl", "-D", "FOREGROUND"]
+CMD ["/start-apache.sh"]
