@@ -2,22 +2,17 @@ FROM debian:bookworm-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Apache
+# Install Apache + PHP 8.2 (default on Bookworm)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         apache2 \
+        php \
+        libapache2-mod-php8.2 \
         curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Install PHP 8.3 + module Apache
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        php \
-        libapache2-mod-php && \
-    rm -rf /var/lib/apt/lists/*
-
 # Config Apache
-RUN a2enmod php rewrite && \
+RUN a2enmod php8.2 rewrite && \
     echo "ServerName localhost" > /etc/apache2/conf-available/servername.conf && \
     a2enconf servername
 
