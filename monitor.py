@@ -43,7 +43,7 @@ def display_header():
     clear_screen()
     print(f"""{Color.BLUE}
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
-│  {Color.BOLD}📊 PHP2Shell Lab - Monitor en temps réel{C.RESET}{Color.BLUE}                                      │
+│  {Color.BOLD}📊 PHP2Shell Lab - Monitor en temps réel{Color.RESET}{Color.BLUE}                                      │
 │  CVE-2026-109618 (PHP2Shell) - Use-After-Free via OOM                              │
 └─────────────────────────────────────────────────────────────────────────────────────┘{Color.RESET}
 """)
@@ -88,8 +88,8 @@ def monitor_logs():
         
         # Afficher l'état des serveurs
         print(f"\n{Color.BOLD}=== État des Serveurs ==={Color.RESET}")
-        print(f"  {Color.RED}• Serveur vulnérable (8888) : PHP 8.4.26 - session.upload_progress.enabled = 1{C.RESET}")
-        print(f"  {Color.GREEN}• Serveur protégé (8889) : PHP 8.4.27 - session.upload_progress.enabled = 0{C.RESET}")
+        print(f"  {Color.RED}• Serveur vulnérable (8888) : PHP 8.4.26 - session.upload_progress.enabled = 1{Color.RESET}")
+        print(f"  {Color.GREEN}• Serveur protégé (8889) : PHP 8.4.27 - session.upload_progress.enabled = 0{Color.RESET}")
         
         # Afficher les logs
         print(f"\n{Color.BOLD}=== Logs Apache (Dernières activités) ==={Color.RESET}")
@@ -98,7 +98,7 @@ def monitor_logs():
         
         # Conseils
         print(f"\n{Color.YELLOW}💡 Conseils :{Color.RESET}")
-        print(f"  • Lancez une attaque avec : {Color.CYAN}python attack.py --oom{C.RESET}")
+        print(f"  • Lancez une attaque avec : {Color.CYAN}python attack.py --oom{Color.RESET}")
         print(f"  • Comparez les logs entre les deux serveurs")
         print(f"  • Le serveur vulnérable affichera des erreurs OOM")
         print(f"  • Le serveur protégé bloquera les attaques")
