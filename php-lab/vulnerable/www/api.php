@@ -1,4 +1,9 @@
 <?php
+// Charger le version override pour simuler PHP 8.4.26
+if (file_exists(__DIR__ . '/version_override.php')) {
+    require_once __DIR__ . '/version_override.php';
+}
+
 // API de contrôle de l'état du lab pour la démo CVE-2026-109618 (PHP2Shell)
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
@@ -219,7 +224,7 @@ if ($action === 'restore') {
     file_put_contents($statusFile, json_encode($data, JSON_PRETTY_PRINT));
     
     // Supprimer les fichiers de preuve
-    $proof_files = ['proof.php', 'proof_ransomware.php', 'proof_deface.php', 'proof_steal.php'];
+    $proof_files = ['proof.php', 'proof_ransomware.php', 'proof_deface.php', 'proof_steal.php', 'DONNEES_RH_EXFILTREES.csv'];
     foreach ($proof_files as $file) {
         if (file_exists(__DIR__ . '/' . $file)) {
             unlink(__DIR__ . '/' . $file);

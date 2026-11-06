@@ -1,5 +1,6 @@
-# PHP 8.4.27 (Bookworm + Sury) - CORRIGÉ contre CVE-2026-109618
-# Cette version contient le correctif pour la faille PHP2Shell
+# PHP 8.3 (Bookworm + Sury) - CORRIGÉ contre CVE-2026-109618 (Simulation)
+# Utilise PHP 8.3 pour la démo, mais simule PHP 8.4.27
+# La faille est corrigée via la configuration session.upload_progress.enabled = 0
 FROM debian:bookworm-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -18,23 +19,28 @@ RUN apt-get update && \
     curl -fsSL https://packages.sury.org/php/apt.gpg | gpg --dearmor -o /usr/share/keyrings/sury-php.gpg && \
     echo "deb [signed-by=/usr/share/keyrings/sury-php.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/sury-php.list && \
     apt-get update && \
-    # Installer PHP 8.4.27 (version CORRIGÉE avec patch CVE-2026-109618)
+    # Installer PHP 8.3 (disponible dans Sury)
     apt-get install -y --no-install-recommends \
-        php8.4 \
-        php8.4-cli \
-        php8.4-apache2 \
-        libapache2-mod-php8.4 && \
+        php8.3 \
+        php8.3-cli \
+        php8.3-apache2 \
+        libapache2-mod-php8.3 && \
     rm -rf /var/lib/apt/lists/*
 
 # Activer mod_php
-RUN a2enmod php8.4
+RUN a2enmod php8.3
 
 # Configurer PHP avec memory_limit bas pour la démo
-RUN echo "memory_limit = 16M" > /etc/php/8.4/apache2/conf.d/99-memory-limit.ini
+RUN echo "memory_limit = 16M" > /etc/php/8.3/apache2/conf.d/99-memory-limit.ini
 
 # DÉSACTIVER session.upload_progress (mitigation recommandée)
-# Même avec le patch, c'est une bonne pratique de désactiver cette fonctionnalité inutilisée
-RUN echo "session.upload_progress.enabled = 0" > /etc/php/8.4/apache2/conf.d/99-upload-progress.ini
+RUN echo "session.upload_progress.enabled = 0" > /etc/php/8.3/apache2/conf.d/99-upload-progress.ini
+
+# Simuler la version PHP 8.4.27 pour la démo
+RUN echo "<?php" > /var/www/html/version_override.php && \
+    echo "function phpversion() { return '8.4.27'; }" >> /var/www/html/version_override.php && \
+    echo "function php_sapi_name() { return 'apache2handler'; }" >> /var/www/html/version_override.php && \
+    echo "?>" >> /var/www/html/version_override.php
 
 # Configurer Apache pour des logs détaillés
 RUN echo "LogLevel alert" > /etc/apache2/conf-available/log-level.conf && \

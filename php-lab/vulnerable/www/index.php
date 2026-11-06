@@ -1,4 +1,9 @@
 <?php
+// Charger le version override pour simuler PHP 8.4.26
+if (file_exists(__DIR__ . '/version_override.php')) {
+    require_once __DIR__ . '/version_override.php';
+}
+
 $phpVersion = phpversion();
 $isVulnerable = version_compare($phpVersion, '8.4.27', '<');
 $statusFile = __DIR__ . '/status.json';
@@ -21,7 +26,6 @@ if (file_exists($statusFile)) {
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', -apple-system, sans-serif; }
         
-        /* ================== ÉTAT NORMAL ================== */
         body.state-normal {
             background: #f4f6f9;
             color: #2c3e50;
@@ -78,12 +82,6 @@ if (file_exists($statusFile)) {
             animation: pulse-border 2s infinite;
         }
 
-        /* ================== ÉTAT RANÇONGICIEL ================== */
-        body.state-ransomware {
-            background: #110000;
-            color: #fff;
-            animation: red-glow 3s infinite alternate;
-        }
         .ransom-box {
             max-width: 900px;
             margin: 40px auto;
@@ -160,12 +158,6 @@ if (file_exists($statusFile)) {
             padding-top: 15px;
         }
 
-        /* ================== ÉTAT DÉFACEMENT ================== */
-        body.state-deface {
-            background: #000;
-            color: #00ff66;
-            font-family: 'Courier New', monospace;
-        }
         .deface-box {
             max-width: 850px;
             margin: 50px auto;
@@ -355,7 +347,7 @@ if (file_exists($statusFile)) {
             </div>
         </div>
 
-    <!-- ================= SCÈNE 3 : DÉFACEMENT ================== -->
+    <!-- ================= SCÈNE 3 : DÉFACEMENT ================= -->
     <?php elseif ($status['state'] === 'deface'): ?>
 
         <div class="deface-box">
@@ -378,7 +370,7 @@ if (file_exists($statusFile)) {
 
     <?php endif; ?>
 
-    <!-- Synchronisation en temps réel : la page s'actualise toute seule au clic du script attaquant ! -->
+    <!-- Synchronisation en temps réel -->
     <script>
         let currentState = "<?php echo $status['state']; ?>";
         setInterval(async () => {
@@ -391,7 +383,7 @@ if (file_exists($statusFile)) {
             } catch (e) {}
         }, 1200);
 
-        // Compte à rebours animé pour le rançongiciel
+        // Compte à rebours animé
         const timerElem = document.getElementById('timer');
         if (timerElem) {
             let seconds = 47 * 3600 + 58 * 60 + 22;

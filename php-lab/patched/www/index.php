@@ -1,4 +1,9 @@
 <?php
+// Charger le version override pour simuler PHP 8.4.27
+if (file_exists(__DIR__ . '/version_override.php')) {
+    require_once __DIR__ . '/version_override.php';
+}
+
 $phpVersion = phpversion();
 $isVulnerable = version_compare($phpVersion, '8.4.27', '<');
 $statusFile = __DIR__ . '/status.json';
