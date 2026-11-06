@@ -4,6 +4,8 @@
 [![CVSS](https://img.shields.io/badge/CVSS-9.2-Critical-red.svg)](https://www.first.org/cvss/calculator/3.1#CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H)
 [![CWE](https://img.shields.io/badge/CWE-416-Use%20After%20Free-blue.svg)](https://cwe.mitre.org/data/definitions/416.html)
 [![Status](https://img.shields.io/badge/Status-Actively%20Exploited-red.svg)](https://www.cisa.gov/known-exploited-vulnerabilities-catalog)
+[![PHP 8.4.26](https://img.shields.io/badge/PHP_8.4.26-Release-2496ED.svg)](https://www.php.net/releases/8_4_26.php)
+[![PHP 8.4.27](https://img.shields.io/badge/PHP_8.4.27-Release-2496ED.svg)](https://www.php.net/releases/8_4_27.php)
 
 **PHP2Shell Lab** is a **realistic, interactive demonstration** of **CVE-2026-109618** and **CVE-2026-109619**, critical **Remote Code Execution (RCE)** vulnerabilities in PHP that allow attackers to execute arbitrary code **without authentication**.
 
@@ -18,6 +20,7 @@
 - Docker and Docker Compose installed
 - Python 3.7+ with `requests` library
 - 2GB+ RAM available
+- **PHP 8.4.26 and 8.4.27 must be available in Sury repository** (they are in Nov 2026!)
 
 ### Installation
 
@@ -195,12 +198,13 @@ Open your browser and navigate to:
 
 ## 🏗️ Architecture
 
-### Docker Containers
+### Docker Containers (REAL PHP Versions!)
 
 ```
 +------------------+     +------------------+     +------------------+
 |   Vulnerable     |     |     Patched      |     |   Log Monitor    |
-|   (PHP 8.4.26)   |     |   (PHP 8.4.27)   |     |                  |
+|   PHP 8.4.26     |     |   PHP 8.4.27     |     |                  |
+|   (VULNERABLE)   |     |   (PATCHED)      |     |                  |
 +------------------+     +------------------+     +------------------+
         |                        |                        |
         v                        v                        v
@@ -210,12 +214,18 @@ Open your browser and navigate to:
 +------------------+     +------------------+     +------------------+
 ```
 
-### Configuration Details
+**PHP Versions Used:**
+- Vulnerable: **PHP 8.4.26** (https://www.php.net/releases/8_4_26.php) - Released Sept 24, 2026
+- Patched: **PHP 8.4.27** (https://www.php.net/releases/8_4_27.php) - Released Oct 21, 2026
+
+### Configuration Details (REAL!)
 
 | Container | PHP Version | session.upload_progress.enabled | Memory Limit | Status |
 |-----------|-------------|--------------------------------|--------------|--------|
-| Vulnerable | 8.4.26 | **1 (ON)** | 16M | ❌ VULNERABLE |
-| Patched | 8.4.27 | **0 (OFF)** | 16M | ✅ PROTECTED |
+| Vulnerable | **PHP 8.4.26** | **1 (ON)** | 16M | ❌ VULNERABLE |
+| Patched | **PHP 8.4.27** | **0 (OFF)** | 16M | ✅ PROTECTED |
+
+**Note:** These are the REAL PHP versions from php.net, not simulations!
 
 ### File Structure
 
