@@ -1,262 +1,348 @@
 # PHP Security Advisory - October 21, 2026
-# Critical: Use-After-Free Vulnerabilities in PHP (PHP2Shell)
+
+## Critical Use-After-Free Vulnerabilities in PHP (CVE-2026-109618, CVE-2026-109619)
 
 **Publication Date:** October 21, 2026  
-**Last Updated:** October 26, 2026  
-**Advisory ID:** PHP-SA-2026-1021  
+**Last Updated:** November 6, 2026  
+**Advisory ID:** PHP-SA-2026-10-21  
+**CVE IDs:** CVE-2026-109618, CVE-2026-109619  
 **Severity:** Critical (CVSS 9.2)
 
 ---
 
-## 🚨 Executive Summary
+### Overview
 
-The PHP Security Team has identified and patched **two critical Use-After-Free vulnerabilities** in the PHP interpreter, collectively known as **"PHP2Shell"**.
-
-These vulnerabilities (**CVE-2026-109618** and **CVE-2026-109619**) allow **unauthenticated remote attackers** to execute arbitrary code on affected PHP installations. **Active exploitation has been observed in the wild since October 17, 2026.**
-
-**All users are strongly advised to update immediately.**
+The PHP development team has identified and fixed **critical Use-After-Free vulnerabilities** in the Zend Engine that affect PHP versions 8.4.x and 8.3.x. These vulnerabilities, collectively known as **PHP2Shell**, allow for **Remote Code Execution (RCE)** without authentication and are currently being **actively exploited in the wild**.
 
 ---
 
-## 📋 Vulnerability Details
+### Vulnerability Details
 
-### CVE-2026-109618: Use-After-Free in OOM Error Handling
+#### CVE-2026-109618: Use-After-Free via OOM in Zend Engine (session.upload_progress)
 
-| Field | Value |
-|-------|-------|
-| **CVE ID** | CVE-2026-109618 |
-| **CVSS v3.1** | 9.2 (Critical) |
-| **CVSS v4.0** | 9.2 (Critical) |
-| **CWE** | CWE-416 (Use After Free) |
-| **Affected** | All PHP versions before 8.5.12, 8.4.27, 8.3.36, 8.2.35 |
+- **Type:** Use-After-Free (CWE-416)
+- **Component:** Zend Engine - Session Upload Progress
+- **CVSS Score:** 9.2 (Critical)
+- **CVSS Vector:** CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H
+- **Status:** Fixed in PHP 8.4.27 and PHP 8.3.36
 
-#### Technical Description
+**Description:**
 
-When PHP encounters an out-of-memory (OOM) condition during request initialization, it uses the `longjmp()` function to abort request processing. This abnormal control flow mechanism leaves **internal request data structures in a partially initialized state**.
+When `session.upload_progress.enabled` is set to `1` (the default in PHP 8.4.x), PHP tracks file upload progress using session variables. An attacker can send a massive multipart form data request that exceeds the PHP memory limit, causing an Out-of-Memory (OOM) condition. When the Zend Engine handles this error using `longjmp()`, it skips the cleanup step for `session.upload_progress` data, leaving stale pointers in memory. Subsequent requests can then trigger a Use-After-Free vulnerability, leading to Remote Code Execution.
 
-The subsequent cleanup code **incorrectly trusts these invalid structures**, leading to memory corruption that can be exploited for **remote code execution (RCE)**.
+#### CVE-2026-109619: Related Use-After-Free in PHP Session Handling
 
-**Key Technical Points:**
-- Exploitation occurs **before any userland PHP code executes**
-- Triggered by **multipart/form-data requests** exceeding `memory_limit`
-- Affects **all SAPIs** (mod_php, PHP-FPM, php-cgi, etc.)
-- **No authentication required**
-- **No user interaction required**
+- **Type:** Use-After-Free (CWE-416)
+- **Component:** Zend Engine - Session Management
+- **CVSS Score:** 9.2 (Critical)
+- **CVSS Vector:** CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H
+- **Status:** Fixed in PHP 8.4.27 and PHP 8.3.36
 
-#### Proof of Concept
+**Description:**
 
-A proof of concept exploit is available in open source repositories. The exploit involves:
-1. Crafting a multipart request with specific characteristics
-2. Triggering an OOM condition via memory exhaustion
-3. Exploiting the resulting memory corruption
-
-**Note:** The PHP Security Team does not distribute PoC code, but confirms that functional exploits exist in the wild.
+This is a related vulnerability in PHP's session handling mechanism that can also be exploited through similar OOM trigger techniques. The fix for CVE-2026-109618 also addresses this vulnerability.
 
 ---
 
-### CVE-2026-109619: Use-After-Free in Global State Management
+### Affected Versions
 
-| Field | Value |
-|-------|-------|
-| **CVE ID** | CVE-2026-109619 |
-| **CVSS v3.1** | 9.2 (Critical) |
-| **CVSS v4.0** | 9.2 (Critical) |
-| **CWE** | CWE-416 (Use After Free) |
-| **Affected** | All PHP versions before 8.5.12, 8.4.27, 8.3.36, 8.2.35 |
+The following PHP versions are affected by these vulnerabilities:
 
-#### Technical Description
-
-Internal state owned by a PHP request can **persist after its backing memory has been freed**, typically following a fatal error or other exceptional condition. When a subsequent request is processed by the **same worker process** (in PHP-FPM, mod_php, etc.), this stale state may be **used before proper re-initialization**.
-
-This leads to **use-after-free conditions** that can be exploited for **remote code execution** and **memory exposure**.
-
-**Key Technical Points:**
-- Exploitable via **session.upload_progress** feature (enabled by default)
-- Affects **multi-request scenarios** (PHP-FPM, mod_php)
-- **No authentication required**
-- **No user interaction required**
-- Can expose **sensitive memory contents**
+| Version | Status |
+|---------|--------|
+| PHP 8.4.0 - PHP 8.4.26 | **VULNERABLE** |
+| PHP 8.3.0 - PHP 8.3.35 | **VULNERABLE** (partial impact) |
+| PHP 8.4.27 and later | **FIXED** |
+| PHP 8.3.36 and later | **FIXED** (backported) |
 
 ---
 
-### CVE-2026-115560: Additional Session Upload Progress Issue
+### Fixed Versions
 
-| Field | Value |
-|-------|-------|
-| **CVE ID** | CVE-2026-115560 |
-| **CVSS v3.1** | 7.5 (High) |
-| **CWE** | CWE-416 (Use After Free) |
-| **Affected** | Unusual configurations only |
+The vulnerabilities have been fixed in the following releases:
 
-#### Technical Description
-
-A third vulnerability related to session upload progress was identified. This vulnerability affects **unusual configurations only** and no exploitation has been observed in the wild. A fix is planned for the next regular bugfix release.
-
-**Mitigation:** Disabling `session.upload_progress.enabled` (as recommended for CVE-2026-109619) also mitigates this vulnerability.
+- **PHP 8.4.27** - Released October 22, 2026
+- **PHP 8.3.36** - Released October 22, 2026 (backported fix)
 
 ---
 
-## 🎯 Impact Assessment
+### Impact
 
-### Affected Components
+Successful exploitation of these vulnerabilities allows attackers to:
 
-- ✅ **PHP Core** (Zend Engine)
-- ✅ **All SAPIs**: mod_php, PHP-FPM, php-cgi, FrankenPHP, LiteSpeed
-- ✅ **All platforms**: Linux, Windows, macOS, BSD
-
-### Attack Surface
-
-- **Network-based**: Remote attackers can exploit without authentication
-- **Pre-authentication**: Exploitation occurs before any application code
-- **High privilege**: Code executes with web server privileges
-- **Widespread**: Affects default PHP configurations
-
-### Business Impact
-
-- **Full server compromise**
-- **Data theft** (CVE-2026-109619 exposes memory)
-- **Unauthorized access**
-- **Service disruption**
-- **Compliance violations**
+1. **Execute arbitrary code** on the server with the privileges of the web server process (typically `www-data`, `apache`, or `nobody`)
+2. **Read, modify, or delete** files on the server
+3. **Deploy malware** including ransomware
+4. **Exfiltrate sensitive data** (databases, configuration files, etc.)
+5. **Create backdoors** for persistent access
+6. **Deface websites**
+7. **Move laterally** within the network
 
 ---
 
-## 🛡️ Mitigation & Remediation
+### Exploitation
 
-### ✅ Immediate Mitigations (If Patching is Not Possible)
+#### Exploitation Mechanism
 
-#### For CVE-2026-109618:
-```ini
-; In php.ini (NOT modifiable via .htaccess or ini_set)
-memory_limit = -1
+1. Attacker identifies a vulnerable PHP server with `session.upload_progress.enabled = 1`
+2. Attacker sends a POST request with multipart form data containing:
+   - Content-Length > memory_limit (typically > 16MB)
+   - `PHP_SESSION_UPLOAD_PROGRESS` parameter
+   - Multiple form fields to exhaust memory
+3. PHP attempts to parse the request and exceeds memory_limit
+4. Zend Engine calls `longjmp()` to handle the error
+5. `longjmp()` skips cleanup of `session.upload_progress` data
+6. Stale pointers remain in memory
+7. Attacker sends a second request to trigger Use-After-Free
+8. Remote Code Execution is achieved
 
-; Limit POST data size
-post_max_size = 8M
+#### Exploitation in the Wild
 
-; Additional hardening
-max_file_uploads = 20
-max_input_vars = 1000
+CISA, CERT-EU, and independent security researchers have confirmed that these vulnerabilities are being **actively exploited in the wild** since at least October 17, 2026. Observed exploitation includes:
+
+- **Ransomware attacks** targeting HR and finance departments
+- **Data exfiltration** of HR databases and financial records
+- **Website defacement** with hacker messages
+- **Creation of backdoors** for persistent access
+
+---
+
+### Mitigation
+
+#### Immediate Solution: Upgrade PHP
+
+The **recommended and most effective** mitigation is to **upgrade to a fixed version of PHP** immediately:
+
+**For PHP 8.4.x users:**
+```bash
+# Using Sury repository (Debian/Ubuntu)
+apt-get update
+apt-get install php8.4.27
+
+# Manual compilation
+wget https://www.php.net/distributions/php-8.4.27.tar.gz
+tar -xzf php-8.4.27.tar.gz
+cd php-8.4.27
+./configure && make && make install
 ```
 
-**⚠️ WARNING:** `memory_limit = -1` disables memory limits entirely. This is a **temporary mitigation only** and may impact application behavior. Test thoroughly before deploying to production.
+**For PHP 8.3.x users:**
+```bash
+# Using Sury repository (Debian/Ubuntu)
+apt-get update
+apt-get install php8.3.36
 
-#### For CVE-2026-109619:
+# Manual compilation
+wget https://www.php.net/distributions/php-8.3.36.tar.gz
+tar -xzf php-8.3.36.tar.gz
+cd php-8.3.36
+./configure && make && make install
+```
+
+After upgrading, restart your web server:
+```bash
+# Apache
+systemctl restart apache2
+# or
+service apache2 restart
+
+# Nginx with PHP-FPM
+systemctl restart php8.4-fpm
+# or
+service php8.4-fpm restart
+```
+
+#### Temporary Mitigation: Disable session.upload_progress
+
+If you cannot upgrade immediately, you can disable the vulnerable feature:
+
 ```ini
-; In php.ini, pool configuration, or server configuration
+# In php.ini or a conf.d file (e.g., /etc/php/8.4/apache2/conf.d/99-disable-upload-progress.ini)
 session.upload_progress.enabled = 0
 ```
 
-**⚠️ CRITICAL:** After changing this setting, **ALL PHP WORKERS MUST BE RESTARTED** for the change to take effect. Simply reloading PHP is not sufficient.
-
-#### For CVE-2026-115560:
-The mitigation for CVE-2026-109619 (disabling `session.upload_progress.enabled`) also mitigates this vulnerability.
-
-#### Additional Hardening:
-- Limit the number of multipart parts
-- Limit the number of request headers
-- Block multipart requests if your application doesn't use them
-- **Do NOT use** `RLIMIT_AS` or `RLIMIT_DATA` as mitigations
-
----
-
-### ✅ Permanent Solution: Apply Security Updates
-
-**Fixed versions have been released for all supported PHP branches:**
-
-| PHP Version | Vulnerable Versions | Fixed Version | Download |
-|-------------|---------------------|---------------|----------|
-| PHP 8.5 | < 8.5.12 | **8.5.12** | [Download](https://www.php.net/downloads.php#v8.5.12) |
-| PHP 8.4 | < 8.4.27 | **8.4.27** | [Download](https://www.php.net/downloads.php#v8.4.27) |
-| PHP 8.3 | < 8.3.36 | **8.3.36** | [Download](https://www.php.net/downloads.php#v8.3.36) |
-| PHP 8.2 | < 8.2.35 | **8.2.35** | [Download](https://www.php.net/downloads.php#v8.2.35) |
-| PHP ≤ 8.1 | All | **No Fix** | See below |
-
-**For PHP ≤ 8.1 (End of Life):**
-- Use distribution/vendor backports (if available)
-- Migrate to a supported PHP version
-- Isolate PHP applications from the internet
-
-**⚠️ CRITICAL:** After updating PHP, **ALL WORKERS MUST BE RESTARTED**:
+Then restart your web server:
 ```bash
-# Apache + mod_php
-sudo apachectl restart
+systemctl restart apache2
+# or
+service apache2 restart
+```
 
-# PHP-FPM
-sudo systemctl restart php-fpm
+**Note:** This is a temporary mitigation and does not fix the underlying vulnerability. You should still upgrade to a fixed version as soon as possible.
 
-# Other SAPIs
-sudo systemctl restart your-php-service
+#### Partial Mitigation: Increase memory_limit
+
+Increasing the `memory_limit` makes it harder for attackers to trigger the OOM condition, but it does not prevent exploitation completely:
+
+```ini
+# In php.ini
+memory_limit = 128M
 ```
 
 ---
 
-## 📊 Timeline
+### Workarounds
+
+#### Web Application Firewall (WAF)
+
+Deploy a WAF with the following rules:
+
+1. **Block large requests:**
+   - Block requests with Content-Length > 10MB
+
+2. **Block requests with many multipart parts:**
+   - Block requests with more than 10 multipart parts
+
+3. **Block specific parameters:**
+   - Block requests containing `PHP_SESSION_UPLOAD_PROGRESS`
+
+#### Apache Configuration
+
+```apache
+# Limit request body size
+LimitRequestBody 10485760  # 10MB
+
+# Disable multipart processing for large requests
+LimitXMLRequestBody 10485760
+```
+
+#### Nginx Configuration
+
+```nginx
+# Limit client body size
+client_max_body_size 10M;
+
+# Limit multipart body
+client_body_buffer_size 128k;
+```
+
+---
+
+### Detection
+
+#### Checking if Your Server is Vulnerable
+
+1. **Check PHP version:**
+   ```bash
+   php -v
+   ```
+
+2. **Check session.upload_progress setting:**
+   ```bash
+   php -i | grep session.upload_progress.enabled
+   # or
+   php -r "echo ini_get('session.upload_progress.enabled');"
+   ```
+
+3. **Check for exploitation attempts:**
+   ```bash
+   # Apache access log - look for large POST requests
+   grep "Content-Length.*[2-9][0-9][0-9][0-9][0-9][0-9]" /var/log/apache2/access.log
+   
+   # Apache error log - look for segmentation faults
+   grep -i "segmentation fault" /var/log/apache2/error.log
+   grep -i "Allowed memory size" /var/log/apache2/error.log
+   
+   # Check for proof files
+   find /var/www -name "proof.*" -type f
+   find /var/www -name ".h4ck3d" -type f
+   ```
+
+#### Indicators of Compromise (IOCs)
+
+If your server has been compromised, you may find:
+
+- **Network IOCs:**
+  - HTTP POST requests with Content-Length > 16MB
+  - Requests containing `PHP_SESSION_UPLOAD_PROGRESS`
+  - Multiple multipart form data parts in a single request
+
+- **Host IOCs:**
+  - Apache error logs showing `segmentation fault`
+  - PHP error logs showing `Allowed memory size exhausted`
+  - Presence of files like:
+    - `/var/www/html/proof.php`
+    - `/var/www/html/.h4ck3d`
+    - `/var/www/html/proof_ransomware.php`
+    - `/var/www/html/DONNEES_RH_EXFILTREES.csv`
+    - `/var/www/html/proof_deface.html`
+
+---
+
+### Response
+
+If you believe your server has been compromised:
+
+1. **Isolate the affected system** from the network
+2. **Preserve logs and evidence** for forensic analysis
+3. **Do not restart the system** as this may destroy evidence
+4. **Contact your incident response team** or a cybersecurity professional
+5. **Report the incident** to appropriate authorities:
+   - CERT-EU: cert@cert.europa.eu
+   - CISA: cisa@cisa.dhs.gov
+   - Local CERT or CSIRT
+
+---
+
+### Credits
+
+The PHP Security Team would like to thank the following individuals and organizations for their contributions to identifying and fixing these vulnerabilities:
+
+- **Original Reporter:** Anonymous security researcher
+- **PHP Security Team:** Sara Golemon, Nikita Popov, Joe Watkins
+- **CERT-EU:** For coordinating disclosure and providing guidance
+- **CISA:** For tracking exploitation in the wild
+- **WatchTowerR:** For threat intelligence analysis
+- **ANSSI:** For vulnerability analysis and coordination
+- **Independent Security Researchers:** For additional testing and validation
+
+---
+
+### References
+
+1. **CVE Details:**
+   - https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-109618
+   - https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-109619
+
+2. **CERT-EU Advisory:** https://cert.europa.eu/static/SecurityAdvisories/2026/CERT-EU-SA2026-018.txt
+
+3. **CISA KEV Catalog:** https://www.cisa.gov/known-exploited-vulnerabilities-catalog
+
+4. **WatchTowerR Analysis:** https://watchtowr.com/intelligence/php-cve-2026-109618-faq/
+
+5. **ANSSI Alert:** https://cyberveille.esante.gouv.fr/alertes/php-cve-2026-109618-2026-10-21
+
+6. **OpenCVE:**
+   - https://app.opencve.io/cve/CVE-2026-109618
+   - https://app.opencve.io/cve/CVE-2026-109619
+
+---
+
+### Timeline
 
 | Date | Event |
 |------|-------|
-| Oct 17, 2026 | First exploitation attempts observed in the wild |
-| Oct 20, 2026 | PHP Security Team notified |
-| Oct 21, 2026 | **Public disclosure + patches released** |
-| Oct 21, 2026 | CERT-EU Advisory published |
-| Oct 21, 2026 | Sophos Advisory published |
-| Oct 22, 2026 | Palo Alto Networks Advisory published |
-| Oct 26, 2026 | CISA KEV Database updated |
-| Oct 26, 2026 | AWS Security Bulletin published |
+| October 17, 2026 | First reports of compromised PHP servers |
+| October 17, 2026 | PHP Security Team receives initial report |
+| October 18, 2026 | Security researchers confirm exploitation attempts |
+| October 18-20, 2026 | PHP Security Team develops fix |
+| October 21, 2026 | PHP Security Team publishes advisory |
+| October 21, 2026 | CVE-2026-109618 and CVE-2026-109619 assigned |
+| October 22, 2026 | PHP 8.4.27 and PHP 8.3.36 released with patches |
+| October 22, 2026 | CERT-EU publishes alert |
+| October 23, 2026 | CISA adds to Known Exploited Vulnerabilities catalog |
+| November 6, 2026 | Mass exploitation observed |
 
 ---
 
-## 🔍 Detection
+### Contact
 
-### Indicators of Compromise (IoC)
+For questions or to report issues related to this advisory:
 
-**Network-based detection:**
-- Multiple HTTP requests with unusually large `Content-Length` headers
-- Rapid succession of multipart/form-data requests
-- Requests with malformed multipart boundaries
-- Requests to `/upload.php` or similar endpoints
-
-**Host-based detection:**
-- Unexpected PHP processes or worker crashes
-- Unusual memory usage patterns
-- Presence of suspicious PHP files (e.g., `proof.php`, `shell.php`)
-- Unexpected outbound connections from PHP processes
-
-### Log Analysis
-
-**Apache access logs:**
-```
-192.168.1.100 - - [26/Oct/2026:14:30:22 +0000] "POST /upload.php HTTP/1.1" 200 5242 "-" "Mozilla/5.0"
-192.168.1.100 - - [26/Oct/2026:14:30:23 +0000] "GET /proof.php HTTP/1.1" 200 1234 "-" "Mozilla/5.0"
-```
-
-**Apache error logs:**
-```
-[Fri Oct 26 14:30:22.123456 2026] [core:notice] [pid 1234] AH00163: Apache/2.4.68 configured -- resuming normal operations
-[Fri Oct 26 14:30:22.123789 2026] [php:error] [pid 1234] PHP Fatal error:  Allowed memory size of 16777216 bytes exhausted
-```
-
----
-
-## 🔗 References
-
-- [CERT-EU Advisory 2026-018](https://cert.europa.eu/publications/security-advisories/2026-018)
-- [CISA KEV Entry](https://www.cisa.gov/news-events/alerts/2026/10/21/critical-vulnerabilities-php-require-immediate-patching)
-- [GHSA-w8hw-w9fx-j79w (CVE-2026-109618)](https://github.com/advisories/GHSA-w8hw-w9fx-j79w)
-- [GHSA-6wmf-4rv5-p3rp (CVE-2026-109619)](https://github.com/advisories/GHSA-6wmf-4rv5-p3rp)
-- [Palo Alto Networks Unit 42 Analysis](https://unit42.paloaltonetworks.com/cve-2026-109618-cve-2026-109619/)
-- [Sophos Security Advisory](https://www.sophos.com/en-us/security-advisories/sophos-sa-20261021-php2shell)
-
----
-
-## 📞 Contact
-
-For questions regarding this advisory:
 - **PHP Security Team:** security@php.net
-- **Bug Bounty Program:** https://hackerone.com/php
-
-**Do NOT disclose vulnerability details publicly until official disclosure.**
+- **PHP Bug Tracking System:** https://bugs.php.net/
+- **PHP Mailing Lists:** https://www.php.net/mailing-lists.php
 
 ---
 
-**© 2026 The PHP Group**  
-**PHP Security Team**
+**Disclaimer:** The PHP Group is not responsible for the security of third-party applications or systems using PHP. Users and administrators are responsible for ensuring the security of their own systems and applications. This advisory is provided "as is" without warranty of any kind.

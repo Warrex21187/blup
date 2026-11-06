@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-📊 PHP2Shell Lab - Monitor en temps réel
-Affiche les logs Apache et l'état des serveurs pendant les attaques
+PHP2Shell Lab - Monitor en temps reel
+Affiche les logs Apache et l etat des serveurs pendant les attaques
 """
 
 import sys
@@ -31,7 +31,7 @@ class Color:
 
 
 def clear_screen():
-    """Efface l'écran du terminal."""
+    """Efface l ecran du terminal."""
     if sys.platform == "win32":
         subprocess.run(["cls"], shell=True)
     else:
@@ -39,82 +39,122 @@ def clear_screen():
 
 
 def display_header():
-    """Affiche l'en-tête du monitor."""
+    """Affiche l en-tete du monitor."""
     clear_screen()
-    print(f"""{Color.BLUE}
-┌─────────────────────────────────────────────────────────────────────────────────────┐
-│  {Color.BOLD}📊 PHP2Shell Lab - Monitor en temps réel{Color.RESET}{Color.BLUE}                                      │
-│  CVE-2026-109618 (PHP2Shell) - Use-After-Free via OOM                              │
-└─────────────────────────────────────────────────────────────────────────────────────┘{Color.RESET}
-""")
-
-
-def monitor_log_file(log_path, label, color):
-    """Surveille un fichier de log et affiche les nouvelles lignes."""
-    if not Path(log_path).exists():
-        return
-    
-    # Lire les dernières lignes
-    with open(log_path, 'r') as f:
-        lines = f.readlines()
-    
-    if lines:
-        print(f"\n{color}[{label}]{Color.RESET} Dernières entrées :")
-        for line in lines[-10:]:  # Afficher les 10 dernières lignes
-            line = line.strip()
-            if line:
-                # Coloriser les erreurs
-                if "error" in line.lower() or "fatal" in line.lower():
-                    print(f"  {Color.RED}{line}{Color.RESET}")
-                elif "warning" in line.lower():
-                    print(f"  {Color.YELLOW}{line}{Color.RESET}")
-                else:
-                    print(f"  {line}")
+    header = f"""
++------------------------------------------------------------------------------------------------------+
+|  {Color.BOLD}Monitor en temps reel - PHP2Shell Lab{Color.RESET}{Color.BLUE}                                              |
+|  CVE-2026-109618 (PHP2Shell) - Use-After-Free via OOM                              {Color.RESET}|
++------------------------------------------------------------------------------------------------------+
+"""
+    print(header)
 
 
 def monitor_logs():
-    """Boucle principale de monitoring."""
+    """Monitore les logs Apache en temps reel."""
+    display_header()
+    
+    print(f"{Color.YELLOW}[*] Demarrage du monitoring...{Color.RESET}")
+    print(f"{Color.YELLOW}[*] Appuyez sur Ctrl+C pour arreter{Color.RESET}\n")
+    
+    # Chemin des logs
     log_files = [
-        ("vulnerable/logs/php2shell-error.log", "VULNÉRABLE (8888)", Color.RED),
-        ("vulnerable/logs/php2shell-access.log", "VULNÉRABLE (8888)", Color.RED),
-        ("patched/logs/php2shell-error.log", "PROTÉGÉ (8889)", Color.GREEN),
-        ("patched/logs/php2shell-access.log", "PROTÉGÉ (8889)", Color.GREEN),
+        './vulnerable/logs/php2shell-access.log',
+        './vulnerable/logs/php2shell-error.log',
+        './patched/logs/php2shell-access.log',
+        './patched/logs/php2shell-error.log',
     ]
     
-    last_sizes = {}
+    # Verifier que les fichiers existent
+    available_files = [f for f in log_files if Path(f).exists()]
     
-    while True:
-        display_header()
-        
-        # Afficher l'état des serveurs
-        print(f"\n{Color.BOLD}=== État des Serveurs ==={Color.RESET}")
-        print(f"  {Color.RED}• Serveur vulnérable (8888) : PHP 8.4.26 - session.upload_progress.enabled = 1{Color.RESET}")
-        print(f"  {Color.GREEN}• Serveur protégé (8889) : PHP 8.4.27 - session.upload_progress.enabled = 0{Color.RESET}")
-        
-        # Afficher les logs
-        print(f"\n{Color.BOLD}=== Logs Apache (Dernières activités) ==={Color.RESET}")
-        for log_path, label, color in log_files:
-            monitor_log_file(log_path, label, color)
-        
-        # Conseils
-        print(f"\n{Color.YELLOW}💡 Conseils :{Color.RESET}")
-        print(f"  • Lancez une attaque avec : {Color.CYAN}python attack.py --oom{Color.RESET}")
-        print(f"  • Comparez les logs entre les deux serveurs")
-        print(f"  • Le serveur vulnérable affichera des erreurs OOM")
-        print(f"  • Le serveur protégé bloquera les attaques")
-        
-        # Attendre avant de rafraîchir
-        time.sleep(3)
+    if not available_files:
+        print(f"{Color.RED}[!] Aucun fichier de log trouve!{Color.RESET}")
+        print(f"{Color.RED}[!] Assurez-vous que les conteneurs Docker sont en cours d execution{Color.RESET}")
+        print(f"{Color.RED}[!] Les logs devraient etre dans : {', '.join(log_files)}{Color.RESET}")
+        return
+    
+    print(f"{Color.GREEN}[+] Surveillance des fichiers:{Color.RESET}")
+    for f in available_files:
+        print(f"    - {f}")
+    print()
+    
+    # Commande tail -f pour tous les fichiers
+    if sys.platform == "win32":
+        # Windows
+        cmd = ['cmd', '/c', 'type'] + available_files
+        print(f"{Color.YELLOW}[*] Executant : {' '.join(cmd)}{Color.RESET}")
+        subprocess.run(cmd)
+    else:
+        # Linux/Mac
+        cmd = ['tail', '-f'] + available_files
+        print(f"{Color.YELLOW}[*] Executant : {' '.join(cmd)}{Color.RESET}")
+        try:
+            subprocess.run(cmd)
+        except KeyboardInterrupt:
+            print(f"\n{Color.YELLOW}[*] Monitoring arrete{Color.RESET}")
+
+
+def display_server_status():
+    """Affiche l etat des serveurs."""
+    display_header()
+    
+    print(f"{Color.CYAN}[*] Etat des serveurs:{Color.RESET}\n")
+    
+    # Verifier les conteneurs Docker
+    try:
+        result = subprocess.run(
+            ['docker', 'ps', '--filter', 'name=php2shell', '--format', 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'],
+            capture_output=True, text=True, timeout=5
+        )
+        print(f"{Color.GREEN}Conteneurs Docker:{Color.RESET}")
+        print(result.stdout)
+    except Exception as e:
+        print(f"{Color.RED}[!] Erreur Docker : {e}{Color.RESET}")
+    
+    print()
+    
+    # Verifier les ports
+    try:
+        result = subprocess.run(
+            ['netstat', '-tuln'] if sys.platform != "win32" else ['netstat', '-ano'],
+            capture_output=True, text=True, timeout=5
+        )
+        lines = result.stdout.split('\n')
+        for line in lines:
+            if '8888' in line or '8889' in line:
+                print(f"{Color.GREEN}Port : {line.strip()}{Color.RESET}")
+    except Exception as e:
+        print(f"{Color.RED}[!] Erreur netstat : {e}{Color.RESET}")
 
 
 def main():
-    print(f"{Color.BOLD}\n🚀 Démarrage du monitor PHP2Shell Lab...{Color.RESET}")
-    print(f"{Color.YELLOW}Appuyez sur Ctrl+C pour quitter{Color.RESET}\n")
+    parser = import argparse
+    parser = argparse.ArgumentParser(
+        description='Monitor en temps reel pour PHP2Shell Lab',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=f"""
+Exemples:
+  python monitor.py --logs
+  python monitor.py --status
+  python monitor.py
+        """
+    )
     
-    try:
+    parser.add_argument('--logs', '-l', action='store_true',
+                        help='Monitore les logs Apache')
+    parser.add_argument('--status', '-s', action='store_true',
+                        help='Affiche l etat des serveurs')
+    
+    args = parser.parse_args()
+    
+    if args.status:
+        display_server_status()
+    elif args.logs:
         monitor_logs()
-    except KeyboardInterrupt:
-        print(f"\n{Color.RED}✗ Monitor arrêté{Color.RESET}")
+    else:
+        # Mode par defaut : monitor les logs
+        monitor_logs()
 
 
 if __name__ == "__main__":

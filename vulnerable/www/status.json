@@ -1,6 +1,15 @@
 {
-    "state": "normal",
-    "updated_at": "00:00:00",
-    "php_version": "8.4.26",
-    "is_vulnerable": true
+  "php_version": "8.4.26",
+  "is_vulnerable": true,
+  "upload_progress_enabled": true,
+  "memory_limit": "16M",
+  "cve": "CVE-2026-109618",
+  "cvss": 9.2,
+  "cwe": "CWE-416",
+  "status": "VULNERABLE",
+  "description": "Use-After-Free via OOM in Zend Engine (session.upload_progress)",
+  "message": "This server is VULNERABLE to PHP2Shell (CVE-2026-109618)",
+  "publication_date": "2026-10-21",
+  "fixed_in": "PHP 8.4.27",
+  "last_updated": "2026-11-06T00:00:00Z"
 }

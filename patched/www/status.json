@@ -1,6 +1,16 @@
 {
-    "state": "normal",
-    "updated_at": "00:00:00",
-    "php_version": "8.4.27",
-    "is_vulnerable": false
+  "php_version": "8.4.27",
+  "is_vulnerable": false,
+  "upload_progress_enabled": false,
+  "memory_limit": "16M",
+  "cve": "CVE-2026-109618",
+  "cvss": 9.2,
+  "cwe": "CWE-416",
+  "status": "PROTECTED",
+  "description": "Use-After-Free via OOM in Zend Engine - PATCHED",
+  "message": "This server is PROTECTED against PHP2Shell (CVE-2026-109618)",
+  "publication_date": "2026-10-21",
+  "patch_date": "2026-10-22",
+  "protection": "session.upload_progress.enabled = 0",
+  "last_updated": "2026-11-06T00:00:00Z"
 }

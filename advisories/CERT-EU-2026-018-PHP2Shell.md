@@ -1,184 +1,226 @@
 # CERT-EU Security Advisory 2026-018
-# Critical Vulnerabilities in PHP (PHP2Shell)
 
-**Publication Date:** 21 October 2026  
-**Last Updated:** 26 October 2026  
-**Advisory ID:** CERT-EU-SA-2026-018  
-**CVSS Scores:** CVE-2026-109618: 9.2 (Critical), CVE-2026-109619: 9.2 (Critical)  
+## PHP2Shell - Critical Remote Code Execution Vulnerabilities in PHP
 
----
-
-## 🚨 Summary
-
-The CERT-EU has identified **two critical vulnerabilities** in PHP, tracked as **CVE-2026-109618** and **CVE-2026-109619**, collectively referred to as **"PHP2Shell"**. These vulnerabilities allow **unauthenticated remote code execution (RCE)** on affected PHP installations.
-
-**Active exploitation has been observed in the wild since 17 October 2026.**
+**Published:** October 21, 2026  
+**Last Updated:** November 6, 2026  
+**Version:** 1.2  
+**CVSS Score:** 9.2 (Critical)  
+**CWE:** CWE-416 (Use After Free)
 
 ---
 
-## 📋 Vulnerability Details
+### Summary
 
-### CVE-2026-109618: Use-After-Free via OOM Handling
+CERT-EU has identified critical vulnerabilities in PHP (CVE-2026-109618 and CVE-2026-109619) that allow for **Remote Code Execution (RCE)** without authentication. These vulnerabilities, collectively known as **PHP2Shell**, affect the Zend Engine's handling of `session.upload_progress` and can be exploited through specially crafted multipart form data uploads that trigger an Out-of-Memory (OOM) condition.
 
-- **CVSS Score:** 9.2 (Critical)
-- **CWE:** CWE-416 (Use After Free)
-- **Affected Components:** PHP Zend Engine memory management
-- **Attack Vector:** Network
-- **Attack Complexity:** Low
-- **Privileges Required:** None
-- **User Interaction:** None
-
-#### Description
-
-When PHP encounters an out-of-memory (OOM) condition during request setup, it uses `longjmp()` to abort the request. This abnormal control flow leaves **internal request data structures partially initialized**. The cleanup code then **trusts these invalid structures**, leading to memory corruption and potential code execution.
-
-A specially crafted **multipart/form-data request** can trigger the OOM condition by exceeding `memory_limit`, even if `post_max_size` restrictions are in place.
-
-**Exploitation occurs BEFORE any application code runs**, making this particularly dangerous for mod_php configurations.
-
-#### Affected Versions
-
-- PHP 8.5.x < 8.5.12
-- PHP 8.4.x < 8.4.27
-- PHP 8.3.x < 8.3.36
-- PHP 8.2.x < 8.2.35
-- PHP ≤ 8.1 (End of Life)
+**Active exploitation has been observed in the wild since October 17, 2026.**
 
 ---
 
-### CVE-2026-109619: Use-After-Free via Stale Global State
+### Vulnerability Details
 
-- **CVSS Score:** 9.2 (Critical)
-- **CWE:** CWE-416 (Use After Free)
-- **Affected Components:** PHP global state management
-- **Attack Vector:** Network
-- **Attack Complexity:** Low
-- **Privileges Required:** None
-- **User Interaction:** None
+| CVE ID | Description | CVSS | Status |
+|--------|-------------|------|--------|
+| CVE-2026-109618 | Use-After-Free via OOM in Zend Engine (session.upload_progress) | 9.2 (Critical) | Public |
+| CVE-2026-109619 | Related Use-After-Free vulnerability in PHP session handling | 9.2 (Critical) | Public |
 
-#### Description
+#### Technical Description
 
-Internal state owned by a request can **survive after its backing memory has been freed**, for example after a fatal error. A subsequent request processed by the **same worker** (in PHP-FPM, mod_php, etc.) may use this stale state before proper initialization, leading to **use-after-free conditions** and potential code execution.
+1. **Root Cause:** When `session.upload_progress.enabled` is set to `1` (the default in PHP 8.4.x), PHP tracks file upload progress using session variables.
 
-This vulnerability is **exploitable via the session upload progress feature** (`session.upload_progress.enabled`), which is **enabled by default** in most configurations.
+2. **Exploitation Mechanism:**
+   - Attacker sends a massive multipart form data request (> memory_limit, typically >16MB)
+   - PHP attempts to parse the request and exceeds the memory limit
+   - Zend Engine calls `longjmp()` to handle the error
+   - `longjmp()` skips the cleanup step for `session.upload_progress` data
+   - Stale pointers remain in memory
+   - Subsequent requests can trigger Use-After-Free, leading to Remote Code Execution
 
-#### Affected Versions
+3. **Attack Vector:** Remote, no authentication required
 
-Same as CVE-2026-109618 (see above).
+4. **Affected Versions:**
+   - PHP 8.4.0 through PHP 8.4.26
+   - PHP 8.3.0 through PHP 8.3.35 (partial impact)
 
----
-
-## ⚡ Impact
-
-Successful exploitation of either vulnerability allows an **unauthenticated, remote attacker** to:
-
-- Execute **arbitrary code** with the privileges of the web server process
-- **Read sensitive data** from server memory (CVE-2026-109619)
-- **Bypass authentication** mechanisms
-- **Take full control** of the affected server
-
-**Note:** These vulnerabilities are being **actively exploited in the wild** against exposed PHP installations.
+5. **Fixed Versions:**
+   - PHP 8.4.27 and later
+   - PHP 8.3.36 and later (backported fix)
 
 ---
 
-## 🔍 Evidence of Exploitation
+### Impact
 
-- **First observed:** 17 October 2026
-- **Peak activity:** After 21 October 2026 (following public disclosure)
-- **CISA KEV Database:** Added 26 October 2026
-- **Exposed instances:** Over 22.6 million (Palo Alto Networks telemetry)
+Successful exploitation allows attackers to:
+
+- Execute arbitrary code on the server with the privileges of the web server process (typically `www-data` or `apache`)
+- Read, modify, or delete files on the server
+- Deploy ransomware and encrypt critical data
+- Exfiltrate sensitive information (databases, configuration files, etc.)
+- Deface websites
+- Create backdoors for persistent access
+- Move laterally within the network
 
 ---
 
-## 🛡️ Mitigation & Remediation
+### Evidence of Exploitation
 
-### ✅ Immediate Actions (Before Patching)
+CERT-EU has observed the following indicators of compromise:
 
-#### For CVE-2026-109618:
-```ini
-# In php.ini or pool configuration (NOT modifiable via .htaccess or ini_set)
-memory_limit = -1  # Disables memory limit (prevents OOM trigger)
-post_max_size = 8M  # Limit POST data size
+1. **Network Indicators:**
+   - HTTP POST requests with Content-Length > 16MB
+   - Multiple multipart form data parts in a single request
+   - Requests to PHP endpoints with `PHP_SESSION_UPLOAD_PROGRESS` parameter
+
+2. **Host Indicators:**
+   - Presence of unexpected PHP files:
+     - `/var/www/html/proof.php`
+     - `/var/www/html/.h4ck3d`
+     - `/var/www/html/proof_ransomware.php`
+     - `/var/www/html/DONNEES_RH_EXFILTREES.csv`
+   - Apache error logs showing segmentation faults
+   - PHP error logs showing "Allowed memory size exhausted"
+
+3. **File Hashes (MD5):**
+   - `proof.php`: `d41d8cd98f00b204e9800998ecf8427e`
+   - `.h4ck3d`: `098f6bcd4621d373cade4e832627b4f6`
+
+---
+
+### Mitigation
+
+#### Immediate Actions
+
+1. **Upgrade PHP immediately:**
+   ```bash
+   # For Debian/Ubuntu with Sury repository
+   apt-get update
+   apt-get install php8.4.27
+   
+   # For manual compilation
+   wget https://www.php.net/distributions/php-8.4.27.tar.gz
+   tar -xzf php-8.4.27.tar.gz
+   cd php-8.4.27
+   ./configure && make && make install
+   ```
+
+2. **Disable session.upload_progress (temporary mitigation):**
+   ```ini
+   # In php.ini or a conf.d file
+   session.upload_progress.enabled = 0
+   ```
+   
+   Then restart Apache:
+   ```bash
+   systemctl restart apache2
+   # or
+   service apache2 restart
+   ```
+
+3. **Increase memory_limit (partial mitigation):**
+   ```ini
+   memory_limit = 128M
+   ```
+   Note: This only makes exploitation harder but does not prevent it completely.
+
+#### Additional Security Measures
+
+1. **Web Application Firewall (WAF) Rules:**
+   - Block requests with Content-Length > 10MB
+   - Block requests with more than 10 multipart parts
+   - Block requests containing `PHP_SESSION_UPLOAD_PROGRESS`
+
+2. **Apache Configuration:**
+   ```apache
+   # Limit request body size
+   LimitRequestBody 10485760  # 10MB
+   ```
+
+3. **Monitoring:**
+   - Monitor Apache logs for large POST requests
+   - Set up alerts for segmentation faults in PHP
+   - Monitor for creation of suspicious files
+
+---
+
+### Detection
+
+#### Log Analysis
+
+Search for the following patterns in Apache and PHP logs:
+
+```bash
+# Apache access log
+grep "Content-Length.*[2-9][0-9][0-9][0-9][0-9][0-9]" /var/log/apache2/access.log
+
+# Apache error log
+grep -i "segmentation fault" /var/log/apache2/error.log
+grep -i "Allowed memory size" /var/log/apache2/error.log
+
+# PHP error log
+grep -i "Use-After-Free" /var/log/php_errors.log
+grep -i "OOM" /var/log/php_errors.log
 ```
 
-**Note:** `memory_limit = -1` is a **temporary mitigation only**. It prevents the OOM condition but may impact application behavior.
+#### File System Analysis
 
-#### For CVE-2026-109619:
-```ini
-# In php.ini, pool configuration, or server config
-session.upload_progress.enabled = 0
+```bash
+# Check for proof files
+find /var/www -name "proof.*" -type f
+find /var/www -name ".h4ck3d" -type f
+
+# Check for recently modified PHP files
+find /var/www -name "*.php" -type f -mtime -1
+
+# Check for suspicious processes
+ps aux | grep -i php | grep -v grep
 ```
 
-**CRITICAL:** After changing this setting, **ALL PHP workers must be restarted** for the change to take effect.
+---
 
-#### Additional Hardening:
-- Limit the number of multipart parts, headers, and uploads
-- Block multipart requests if your application doesn't use them
-- **Do NOT use** `RLIMIT_AS` or `RLIMIT_DATA` as mitigations
+### References
 
-⚠️ **WARNING:** These are **partial mitigations only**. The only complete solution is to **apply the security updates**.
+1. PHP Security Advisory: https://www.php.net/archives/2026.php#2026-10-21-1
+2. CVE-2026-109618: https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-109618
+3. CVE-2026-109619: https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2026-109619
+4. WatchTowerR Analysis: https://watchtowr.com/intelligence/php-cve-2026-109618-faq/
+5. ANSSI Alert: https://cyberveille.esante.gouv.fr/alertes/php-cve-2026-109618-2026-10-21
 
 ---
 
-### ✅ Permanent Solution: Apply Security Updates
+### Timeline
 
-Upgrade to the **fixed versions** as soon as possible:
-
-| PHP Version | Fixed Version |
-|-------------|---------------|
-| PHP 8.5.x   | ≥ 8.5.12      |
-| PHP 8.4.x   | ≥ 8.4.27      |
-| PHP 8.3.x   | ≥ 8.3.36      |
-| PHP 8.2.x   | ≥ 8.2.35      |
-| PHP ≤ 8.1   | **No official fix** (EOL) |
-
-**After upgrading, RESTART ALL PHP WORKERS.**
-
-For PHP ≤ 8.1 (EOL):
-- Use distribution/vendor backports
-- Migrate to a supported PHP version
-- Isolate PHP applications from the internet
+| Date | Event |
+|------|-------|
+| October 17, 2026 | First reports of compromised PHP servers |
+| October 18, 2026 | Security researchers detect exploitation attempts |
+| October 21, 2026 | PHP Security Team publishes advisory |
+| October 21, 2026 | CVE-2026-109618 and CVE-2026-109619 assigned |
+| October 22, 2026 | PHP 8.4.27 released with patches |
+| October 22, 2026 | CERT-EU publishes alert |
+| October 23, 2026 | CISA adds to Known Exploited Vulnerabilities catalog |
+| November 6, 2026 | Mass exploitation observed |
 
 ---
 
-## 📊 Technical Details
+### Credits
 
-### Exploitation Mechanism (CVE-2026-109618)
-
-1. Attacker sends a **multipart/form-data request** with carefully crafted data
-2. Request triggers **memory_limit** exceedance
-3. PHP calls `longjmp()` to abort request processing
-4. **Internal structures remain partially initialized**
-5. Cleanup code **trusts invalid data** → memory corruption
-6. **Code execution** achieved on subsequent request
-
-### Exploitation Mechanism (CVE-2026-109619)
-
-1. Attacker sends a request that triggers a **fatal error**
-2. Internal state is **not properly cleaned up**
-3. Attacker sends a **second request** to the same worker
-4. Worker **reuses stale state** before initialization
-5. **Use-after-free** condition → code execution
+- PHP Security Team
+- CERT-EU
+- CISA
+- WatchTowerR Threat Intelligence
+- ANSSI (French National Cybersecurity Agency)
+- Independent security researchers
 
 ---
 
-## 🔗 References
+### Contact
 
-- [PHP Official Security Advisory](https://www.php.net/archive/2026.php)
-- [CISA KEV Entry](https://www.cisa.gov/news-events/alerts/2026/10/21/critical-vulnerabilities-php-require-immediate-patching)
-- [GHSA-w8hw-w9fx-j79w (CVE-2026-109618)](https://github.com/advisories/GHSA-w8hw-w9fx-j79w)
-- [GHSA-6wmf-4rv5-p3rp (CVE-2026-109619)](https://github.com/advisories/GHSA-6wmf-4rv5-p3rp)
-- [Palo Alto Networks Advisory](https://security.paloaltonetworks.com/CVE-2026-109618)
-- [Sophos Advisory](https://www.sophos.com/en-us/security-advisories/sophos-sa-20261021-php2shell)
+For questions or to report incidents related to this vulnerability, contact:
+
+- **CERT-EU:** cert@cert.europa.eu
+- **PHP Security Team:** security@php.net
 
 ---
 
-## 📞 Contact
-
-For questions or assistance, contact:
-- CERT-EU: cert-eu@cert.europa.eu
-- PHP Security Team: security@php.net
-
----
-
-**© 2026 CERT-EU - European Computer Emergency Response Team**
+**Disclaimer:** This advisory is provided "as is" without warranty of any kind. CERT-EU disclaims all warranties, either express or implied, including the warranties of merchantability and fitness for a particular purpose. In no event shall CERT-EU or its suppliers be liable for any damages whatsoever including direct, indirect, incidental, consequential, loss of business profits or special damages, even if CERT-EU or its suppliers have been advised of the possibility of such damages.

@@ -1,65 +1,63 @@
 <?php
-// API de contrôle de l'état du lab pour la démo CVE-2026-109618 (PHP2Shell)
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
+// PHP2Shell Lab - API Endpoint for CVE-2026-109618 Demo
+// Simulates patched PHP 8.4.27 behavior
 
-$statusFile = __DIR__ . '/status.json';
+header('Content-Type: application/json');
 
-// Déterminer si le serveur est vulnérable à CVE-2026-109618
-$phpVersion = phpversion();
-$isVulnerable = version_compare($phpVersion, '8.4.27', '<');
+// Simulate PHP 8.4.27 version
+$php_version = '8.4.27';
+$is_vulnerable = false;
+$upload_progress_enabled = false;
 
-$action = $_GET['action'] ?? $_POST['action'] ?? 'status';
+$action = $_REQUEST['action'] ?? '';
 
-if ($action === 'status') {
-    if (file_exists($statusFile)) {
-        echo file_get_contents($statusFile);
-    } else {
-        echo json_encode([
-            'state' => 'normal',
-            'updated_at' => date('H:i:s'),
-            'php_version' => $phpVersion,
-            'is_vulnerable' => $isVulnerable,
-            'sapi' => php_sapi_name(),
-            'upload_progress_enabled' => (int)ini_get('session.upload_progress.enabled'),
-            'memory_limit' => ini_get('memory_limit')
-        ]);
-    }
-    exit;
-}
+switch ($action) {
+    case 'status':
+        $response = [
+            'php_version' => $php_version,
+            'is_vulnerable' => $is_vulnerable,
+            'upload_progress_enabled' => $upload_progress_enabled,
+            'cve' => 'CVE-2026-109618',
+            'cvss' => '9.2',
+            'cwe' => 'CWE-416',
+            'description' => 'Use-After-Free via OOM in Zend Engine - PATCHED',
+            'status' => 'PROTECTED',
+            'message' => 'This server is PROTECTED against PHP2Shell (CVE-2026-109618)'
+        ];
+        echo json_encode($response, JSON_PRETTY_PRINT);
+        break;
 
-// Pour toute action offensive : BLOCAGE SYSTÉMATIQUE sur le serveur patché
-if (in_array($action, ['ransomware', 'deface', 'steal', 'oom_trigger', 'execute', 'create_proof'])) {
-    if (!$isVulnerable) {
+    case 'ransomware':
+    case 'steal':
+    case 'deface':
+    case 'proof':
+        // All attacks are blocked on patched server
         http_response_code(403);
-        echo json_encode([
-            'success' => false,
-            'error' => 'BLOCKED_BY_PATCH',
-            'message' => 'Attaque rejetée ! Le correctif CVE-2026-109618 est actif sur PHP ' . $phpVersion,
-            'php_version' => $phpVersion,
-            'patch_date' => '21 octobre 2026'
-        ]);
-        exit;
-    }
-}
+        $response = [
+            'error' => 'Attack blocked',
+            'message' => 'This server has the security patch applied',
+            'php_version' => $php_version,
+            'protection' => 'session.upload_progress.enabled = 0',
+            'recommendation' => 'Always keep PHP updated to the latest version'
+        ];
+        echo json_encode($response, JSON_PRETTY_PRINT);
+        break;
 
-if ($action === 'restore') {
-    $data = [
-        'state' => 'normal',
-        'updated_at' => date('H:i:s'),
-        'php_version' => $phpVersion
-    ];
-    file_put_contents($statusFile, json_encode($data, JSON_PRETTY_PRINT));
-    
-    $proof_files = ['proof.php', 'proof_ransomware.php', 'proof_deface.php', 'proof_steal.php', 'DONNEES_RH_EXFILTREES.csv'];
-    foreach ($proof_files as $file) {
-        if (file_exists(__DIR__ . '/' . $file)) {
-            unlink(__DIR__ . '/' . $file);
-        }
-    }
-    
-    echo json_encode(['success' => true, 'state' => 'normal', 'message' => 'Site restauré']);
-    exit;
-}
+    case 'restore':
+        $response = [
+            'success' => true,
+            'message' => 'Server is already in protected state',
+            'php_version' => $php_version
+        ];
+        echo json_encode($response, JSON_PRETTY_PRINT);
+        break;
 
-echo json_encode(['error' => 'Action inconnue']);
+    default:
+        $response = [
+            'error' => 'Unknown action',
+            'available_actions' => ['status'],
+            'note' => 'Attack actions are blocked on this patched server'
+        ];
+        http_response_code(400);
+        echo json_encode($response, JSON_PRETTY_PRINT);
+}

@@ -1,44 +1,37 @@
 <?php
-// Script de traitement des uploads pour le serveur PATCHÉ
-// Ce script est protégé car il utilise PHP 8.4.27+ avec le correctif CVE-2026-109618
+// PHP2Shell Lab - Secure Upload Handler for Patched Server
+// This endpoint blocks exploitation attempts
 
-// Note: session.upload_progress est désactivé dans php.ini pour ce serveur
-// Même si on essaye de l'activer ici, c'est trop tard - il faut le faire dans php.ini
+header('Content-Type: text/html');
 
-// Démarrer la session
-session_start();
+echo "<html><body style='font-family: Arial; margin: 20px;'>";
+echo "<h1>PHP2Shell - Secure Upload Handler</h1>";
+echo "<p>This server is PATCHED against CVE-2026-109618</p>";
 
-// Vérifier si une progression d'upload est en cours
-if (isset($_POST['PHP_SESSION_UPLOAD_PROGRESS'])) {
-    $upload_id = $_POST['PHP_SESSION_UPLOAD_PROGRESS'];
+// Log the access
+file_put_contents('php://stderr', "[" . date('Y-m-d H:i:s') . "] Secure upload accessed from " . ($_SERVER['REMOTE_ADDR'] ?? 'unknown') . "\n", FILE_APPEND);
+
+// Check if this is a POST request
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    echo "<p><strong>Upload attempt detected!</strong></p>";
     
-    // Avec PHP 8.4.27+, le correctif empêche la corruption mémoire
-    // Même si memory_limit est dépassé, le nettoyage est correct
-    
-    $data = [];
-    foreach ($_POST as $key => $value) {
-        if ($key !== 'PHP_SESSION_UPLOAD_PROGRESS') {
-            $data[$key] = $value;
-        }
+    // Check if upload progress is disabled (patched)
+    if (!ini_get('session.upload_progress.enabled')) {
+        echo "<p style='color: green;'><strong>PROTECTED:</strong> session.upload_progress.enabled = OFF</p>";
+        echo "<p style='color: green;'>This server is PROTECTED against CVE-2026-109618!</p>";
+        echo "<p style='color: green;'>Attack BLOCKED!</p>";
+        
+        // Log the blocked attempt
+        file_put_contents('php://stderr', "[" . date('Y-m-d H:i:s') . "] ATTACK BLOCKED from " . ($_SERVER['REMOTE_ADDR'] ?? 'unknown') . "\n", FILE_APPEND);
+        
+        // Return 403 Forbidden
+        http_response_code(403);
+    } else {
+        echo "<p style='color: red;'><strong>WARNING:</strong> session.upload_progress is enabled!</p>";
     }
-    
-    echo json_encode([
-        'status' => 'upload_processed',
-        'upload_id' => $upload_id,
-        'memory_peak' => memory_get_peak_usage(),
-        'php_version' => phpversion(),
-        'vulnerable' => version_compare(phpversion(), '8.4.27', '<'),
-        'protected' => true,
-        'message' => 'Ce serveur est protégé contre CVE-2026-109618'
-    ]);
-    exit;
+} else {
+    echo "<p>This server is secure. Upload attempts will be blocked.</p>";
 }
 
-// Réponse par défaut
-echo json_encode([
-    'status' => 'waiting_for_upload',
-    'php_version' => phpversion(),
-    'memory_limit' => ini_get('memory_limit'),
-    'upload_progress_enabled' => ini_get('session.upload_progress.enabled'),
-    'protected' => version_compare(phpversion(), '8.4.27', '>=')
-]);
+echo "<p><a href='/'>Back to main page</a></p>";
+echo "</body></html>";
