@@ -1,73 +1,33 @@
-# PHP 8.3 (Bookworm + Sury) - CORRIGÉ contre CVE-2026-109618 (Simulation)
-# Utilise PHP 8.3 pour la démo, mais simule PHP 8.4.27
-# La faille est corrigée via la configuration session.upload_progress.enabled = 0
 FROM debian:bookworm-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Installer les dépendances
+# Install Apache
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         apache2 \
-        curl \
-        gnupg2 \
-        ca-certificates \
-        lsb-release \
-        tail \
-        net-tools && \
-    # Ajouter le repo Sury pour PHP
-    curl -fsSL https://packages.sury.org/php/apt.gpg | gpg --dearmor -o /usr/share/keyrings/sury-php.gpg && \
-    echo "deb [signed-by=/usr/share/keyrings/sury-php.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/sury-php.list && \
-    apt-get update && \
-    # Installer PHP 8.3 (disponible dans Sury)
-    apt-get install -y --no-install-recommends \
-        php8.3 \
-        php8.3-cli \
-        php8.3-apache2 \
-        libapache2-mod-php8.3 && \
+        curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Activer mod_php
-RUN a2enmod php8.3
+# Install PHP 8.3 + module Apache
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        php \
+        libapache2-mod-php && \
+    rm -rf /var/lib/apt/lists/*
 
-# Configurer PHP avec memory_limit bas pour la démo
-RUN echo "memory_limit = 16M" > /etc/php/8.3/apache2/conf.d/99-memory-limit.ini
+# Config Apache
+RUN a2enmod php rewrite && \
+    echo "ServerName localhost" > /etc/apache2/conf-available/servername.conf && \
+    a2enconf servername
 
-# DÉSACTIVER session.upload_progress (mitigation recommandée)
-RUN echo "session.upload_progress.enabled = 0" > /etc/php/8.3/apache2/conf.d/99-upload-progress.ini
+# Config PHP - PATCHED (session.upload_progress.enabled = 0)
+RUN echo "memory_limit = 16M" > /etc/php/*/apache2/conf.d/99-memory-limit.ini && \
+    echo "session.upload_progress.enabled = 0" > /etc/php/*/apache2/conf.d/99-upload-progress.ini
 
-# Simuler la version PHP 8.4.27 pour la démo
-RUN echo "<?php" > /var/www/html/version_override.php && \
-    echo "function phpversion() { return '8.4.27'; }" >> /var/www/html/version_override.php && \
-    echo "function php_sapi_name() { return 'apache2handler'; }" >> /var/www/html/version_override.php && \
-    echo "?>" >> /var/www/html/version_override.php
-
-# Configurer Apache pour des logs détaillés
-RUN echo "LogLevel alert" > /etc/apache2/conf-available/log-level.conf && \
-    echo "ErrorLog /var/log/apache2/php2shell-error.log" >> /etc/apache2/conf-available/log-level.conf && \
-    echo "CustomLog /var/log/apache2/php2shell-access.log combined" >> /etc/apache2/conf-available/log-level.conf && \
-    a2enconf log-level
-
-# Activer le module rewrite pour Apache
-RUN a2enmod rewrite
-
-# DirectoryIndex
-RUN printf '<IfModule mod_dir.c>\n    DirectoryIndex index.php index.html\n</IfModule>\n' > /etc/apache2/mods-available/dir.conf
-
-# Copier l'application web de démo
+# Copy website files
 COPY www/ /var/www/html/
-RUN rm -f /var/www/html/index.html
-
-# Créer le répertoire des logs
-RUN mkdir -p /var/log/apache2 && \
-    chown -R www-data:www-data /var/log/apache2
-
-RUN chown -R www-data:www-data /var/www/html && \
-    chmod -R 755 /var/www/html
-
-# Script de démarrage personnalisé
-COPY scripts/start-apache.sh /start-apache.sh
-RUN chmod +x /start-apache.sh
+RUN chown -R www-data:www-data /var/www/html
 
 EXPOSE 80
-CMD ["/start-apache.sh"]
+CMD ["apache2ctl", "-D", "FOREGROUND"]

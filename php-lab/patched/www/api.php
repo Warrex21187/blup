@@ -1,9 +1,4 @@
 <?php
-// Charger le version override pour simuler PHP 8.4.27
-if (file_exists(__DIR__ . '/version_override.php')) {
-    require_once __DIR__ . '/version_override.php';
-}
-
 // API de contrôle de l'état du lab pour la démo CVE-2026-109618 (PHP2Shell)
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
@@ -11,7 +6,6 @@ header('Access-Control-Allow-Origin: *');
 $statusFile = __DIR__ . '/status.json';
 
 // Déterminer si le serveur est vulnérable à CVE-2026-109618
-// Versions vulnérables : PHP 5.x-8.1 (EOL), 8.2 < 8.2.35, 8.3 < 8.3.36, 8.4 < 8.4.27
 $phpVersion = phpversion();
 $isVulnerable = version_compare($phpVersion, '8.4.27', '<');
 
@@ -34,7 +28,7 @@ if ($action === 'status') {
     exit;
 }
 
-// Pour toute action offensive : si le serveur est patché, on bloque SYSTÉMATIQUEMENT !
+// Pour toute action offensive : BLOCAGE SYSTÉMATIQUE sur le serveur patché
 if (in_array($action, ['ransomware', 'deface', 'steal', 'oom_trigger', 'execute', 'create_proof'])) {
     if (!$isVulnerable) {
         http_response_code(403);
@@ -57,7 +51,6 @@ if ($action === 'restore') {
     ];
     file_put_contents($statusFile, json_encode($data, JSON_PRETTY_PRINT));
     
-    // Supprimer les fichiers de preuve
     $proof_files = ['proof.php', 'proof_ransomware.php', 'proof_deface.php', 'proof_steal.php', 'DONNEES_RH_EXFILTREES.csv'];
     foreach ($proof_files as $file) {
         if (file_exists(__DIR__ . '/' . $file)) {

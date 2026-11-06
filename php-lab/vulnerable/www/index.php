@@ -1,9 +1,4 @@
 <?php
-// Charger le version override pour simuler PHP 8.4.26
-if (file_exists(__DIR__ . '/version_override.php')) {
-    require_once __DIR__ . '/version_override.php';
-}
-
 $phpVersion = phpversion();
 $isVulnerable = version_compare($phpVersion, '8.4.27', '<');
 $statusFile = __DIR__ . '/status.json';
@@ -177,7 +172,6 @@ if (file_exists($statusFile)) {
 
 <body class="state-<?php echo htmlspecialchars($status['state']); ?>">
 
-    <!-- ================= SCÈNE 1 : ÉTAT NORMAL ================= -->
     <?php if ($status['state'] === 'normal' || $status['state'] === 'data_leak'): ?>
         
         <header class="header-normal">
@@ -197,8 +191,8 @@ if (file_exists($statusFile)) {
             <?php if ($status['state'] === 'data_leak'): ?>
                 <div class="leak-alert">
                     <div>
-                        <strong style="font-size: 1.1rem; display: block;">🚨 FUITE DE DONNÉES EN COURS (EXFILTRATION)</strong>
-                        <span>La base de données RH (salaires, IBAN, numéros de sécurité sociale) vient d'être extraite via la faille PHP2Shell (CVE-2026-109618) !</span>
+                        <strong style="font-size: 1.1rem; display: block;">🚨 FUITE DE DONNÉES EN COURS</strong>
+                        <span>La base de données RH vient d'être extraite via CVE-2026-109618 !</span>
                     </div>
                     <span style="background: #b45309; color: white; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 0.85rem;">4 FICHES VOLÉES</span>
                 </div>
@@ -217,7 +211,7 @@ if (file_exists($statusFile)) {
                     </div>
                     <div class="item-info">
                         <span>Serveur Web</span>
-                        <strong>Apache / <?php echo apache_get_version(); ?></strong>
+                        <strong>Apache</strong>
                     </div>
                     <div class="item-info">
                         <span>Upload Progress</span>
@@ -234,143 +228,81 @@ if (file_exists($statusFile)) {
                     <div class="item-info">
                         <span>Statut Sécurité</span>
                         <?php if ($isVulnerable): ?>
-                            <strong style="color: #dc2626;">Version NON corrigée</strong>
+                            <strong style="color: #dc2626;">Vulnérable</strong>
                         <?php else: ?>
-                            <strong style="color: #16a34a;">Patch Appliqué ✓</strong>
+                            <strong style="color: #16a34a;">Sécurisé ✓</strong>
                         <?php endif; ?>
                     </div>
                 </div>
 
                 <div style="margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #2563eb; font-size: 0.9rem; line-height: 1.6;">
-                    <strong>🔍 Fiche Pédagogique — CVE-2026-109618 (PHP2Shell) :</strong><br>
-                    ✅ <strong>Origine :</strong> Faille de gestion mémoire du moteur Zend C lors d'un dépassement de mémoire (Out-of-Memory).<br>
-                    ✅ <strong>Mécanisme :</strong> Le saut d'interruption <code>longjmp()</code> court-circuite la libération des structures d'upload de session, laissant des pointeurs orphelins (Use-After-Free) dans les processus workers réutilisés.<br>
-                    ✅ <strong>Impact :</strong> Exécution de code à distance (RCE) <strong>sans authentification</strong>.<br>
-                    ✅ <strong>CVSS :</strong> <span style="color: #dc2626; font-weight: bold;">9.2/10 (Critique)</span><br>
-                    ✅ <strong>Mitigation :</strong> <code>session.upload_progress.enabled = 0</code> ou mise à jour vers PHP ≥ 8.4.27
-                    <?php if (!ini_get('session.upload_progress.enabled')): ?>
-                        <span style="color: #16a34a; font-weight: 600;">(Désactivé — Surface d'attaque neutralisée ✓)</span>
-                    <?php else: ?>
-                        <span style="color: #dc2626; font-weight: 600;">(Actif — Vecteur exposé ⚠️)</span>
-                    <?php endif; ?>
+                    <strong>🔍 CVE-2026-109618 (PHP2Shell) :</strong><br>
+                    Use-After-Free via OOM dans Zend Engine (session.upload_progress)
                 </div>
             </div>
 
             <div class="card">
-                <h2>👥 Annuaire & Données RH de l'Entreprise</h2>
-                <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 14px;">
-                    Données confidentielles internes réservées aux salariés d'Acme Technologies.
-                </p>
+                <h2>👥 Annuaire & Données RH</h2>
+                <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 14px;">Données confidentielles internes.</p>
                 <table class="emp-table">
                     <thead>
                         <tr>
                             <th>Nom & Prénom</th>
                             <th>Département</th>
-                            <th>Email Professionnel</th>
-                            <th>Accès Système</th>
+                            <th>Email</th>
+                            <th>Accès</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td><strong>Alice Dupont</strong></td>
-                            <td>Ressources Humaines</td>
-                            <td>alice.dupont@acme.corp</td>
-                            <td><span class="tag-safe">Niveau RH</span></td>
-                        </tr>
-                        <tr>
-                            <td><strong>Bob Martin</strong></td>
-                            <td>Direction Informatique (DSI)</td>
-                            <td>bob.martin@acme.corp</td>
-                            <td><span class="tag-safe">Admin Root</span></td>
-                        </tr>
-                        <tr>
-                            <td><strong>Claire Bernard</strong></td>
-                            <td>Comptabilité & Paie</td>
-                            <td>claire.bernard@acme.corp</td>
-                            <td><span class="tag-safe">Accès Bancaire</span></td>
-                        </tr>
-                        <tr>
-                            <td><strong>David Leroy</strong></td>
-                            <td>Ventes & Partenariats</td>
-                            <td>david.leroy@acme.corp</td>
-                            <td><span class="tag-safe">Commercial</span></td>
-                        </tr>
+                        <tr><td><strong>Alice Dupont</strong></td><td>Ressources Humaines</td><td>alice.dupont@acme.corp</td><td><span class="tag-safe">Niveau RH</span></td></tr>
+                        <tr><td><strong>Bob Martin</strong></td><td>Direction Informatique</td><td>bob.martin@acme.corp</td><td><span class="tag-safe">Admin Root</span></td></tr>
+                        <tr><td><strong>Claire Bernard</strong></td><td>Comptabilité</td><td>claire.bernard@acme.corp</td><td><span class="tag-safe">Accès Bancaire</span></td></tr>
+                        <tr><td><strong>David Leroy</strong></td><td>Ventes</td><td>david.leroy@acme.corp</td><td><span class="tag-safe">Commercial</span></td></tr>
                     </tbody>
                 </table>
             </div>
-
-            <div class="card">
-                <h2>📅 Actualités & Notes de Service</h2>
-                <div style="background: #f8fafc; padding: 14px; border-radius: 8px; font-size: 0.9rem; line-height: 1.6;">
-                    <strong>🔐 Rappel Prévention Cyber :</strong> Toutes les applications internes doivent faire l'objet de mises à jour de sécurité régulières pour éviter les intrusions et les rançongiciels. La faille CVE-2026-109618 (PHP2Shell) est activement exploitée dans la nature depuis octobre 2026.
-                </div>
-            </div>
-
         </div>
 
-    <!-- ================= SCÈNE 2 : RANÇONGICIEL ================= -->
     <?php elseif ($status['state'] === 'ransomware'): ?>
         
         <div class="ransom-box">
             <div class="ransom-siren">🚨 🚀 🚨</div>
             <h1 class="ransom-title">SYSTÈME VERROUILLÉ — RANÇONGICIEL</h1>
-            <p class="ransom-subtitle">
-                Toutes les données sensibles du serveur <strong>Acme Technologies</strong> ont été chiffrées avec un algorithme de niveau militaire.<br>
-                Vous avez perdu l'accès à vos bases de données, contrats et fiches de paie.
-            </p>
-
+            <p class="ransom-subtitle">Toutes les données ont été chiffrées.</p>
             <div class="countdown-container">
-                <div class="countdown-label">⏳ Temps restant avant destruction totale des données</div>
+                <div class="countdown-label">⏳ Temps restant avant destruction</div>
                 <div class="countdown-timer" id="timer">47:58:22</div>
             </div>
-
             <div class="ransom-details">
-                <strong>📋 Fichiers chiffrés et séquestrés (échantillon) :</strong>
+                <strong>📋 Fichiers chiffrés :</strong>
                 <ul class="ransom-list">
-                    <li>📄 /var/www/html/base_rh_salaires_2026.sql [CHIFFRÉ]</li>
-                    <li>📄 /var/www/html/comptabilite_rib_bancaires.xlsx [CHIFFRÉ]</li>
-                    <li>📄 /var/www/html/contrats_clients_confidentiels.pdf [CHIFFRÉ]</li>
-                    <li>📄 /var/www/html/mots_de_passe_salaries.kdbx [CHIFFRÉ]</li>
+                    <li>📄 base_rh_salaires_2026.sql [CHIFFRÉ]</li>
+                    <li>📄 comptabilite_rib_bancaires.xlsx [CHIFFRÉ]</li>
+                    <li>📄 contrats_clients_confidentiels.pdf [CHIFFRÉ]</li>
                 </ul>
                 <div style="margin-top: 15px; border-top: 1px solid #440000; padding-top: 10px;">
-                    💰 <strong>Rançon exigée :</strong> 50 000 € (2.5 Bitcoins) à transférer sur le portefeuille anonyme fourni.<br>
-                    ⚠️ Ne redémarrez pas le serveur : la clé de déchiffrement sera détruite.
+                    💰 <strong>Rançon :</strong> 50 000 € (2.5 Bitcoins)
                 </div>
             </div>
-
-            <a href="#" class="ransom-action" onclick="alert('Démonstration sensibilisation : Dans un cas réel, NE JAMAIS PAYER LA RANÇON ! Contacter les autorités et restaurer les sauvegardes.'); return false;">
-                Payer la rançon (50 000 €)
-            </a>
-
-            <div class="ransom-footer-note">
-                🔒 <em>Session de Prévention Cyber : Attaque rendue possible par l'absence de mise à jour (CVE-2026-109618 — PHP2Shell).</em>
-            </div>
+            <a href="#" class="ransom-action" onclick="alert('Démonstration : NE JAMAIS PAYER !'); return false;">Payer la rançon</a>
+            <div class="ransom-footer-note">🔒 Session de Prévention Cyber : CVE-2026-109618 (PHP2Shell)</div>
         </div>
 
-    <!-- ================= SCÈNE 3 : DÉFACEMENT ================= -->
     <?php elseif ($status['state'] === 'deface'): ?>
-
         <div class="deface-box">
             <div style="font-size: 3rem; margin-bottom: 10px;">☠️</div>
             <h1>HACKED BY PHP2SHELL</h1>
-            <p style="font-size: 1.2rem; margin-bottom: 20px;">
-                Votre serveur web a été totalement compromis en 1 seconde !
-            </p>
+            <p style="font-size: 1.2rem; margin-bottom: 20px;">Serveur compromis en 1 seconde !</p>
             <div style="background: #001a00; padding: 20px; text-align: left; border: 1px solid #00ff66; margin-bottom: 25px; line-height: 1.8;">
                 [+] Cible : Acme Technologies<br>
-                [+] Vulnérabilité : CVE-2026-109618 (PHP2Shell - Use-After-Free)<br>
-                [+] Privilèges : Contrôle total du serveur (RCE)<br>
-                [+] Méthode : Exploitation OOM via session.upload_progress<br>
-                [+] Motif : Absence de correctif de sécurité sur un composant exposé.
+                [+] Vulnérabilité : CVE-2026-109618 (PHP2Shell)<br>
+                [+] Privilèges : Contrôle total (RCE)<br>
+                [+] Motif : Absence de correctif
             </div>
-            <p style="color: #fff; font-size: 0.95rem;">
-                🔒 <em>Démonstration de sensibilisation : Mettez vos logiciels à jour !</em>
-            </p>
+            <p style="color: #fff; font-size: 0.95rem;">🔒 Démonstration : Mettez vos logiciels à jour !</p>
         </div>
-
     <?php endif; ?>
 
-    <!-- Synchronisation en temps réel -->
     <script>
         let currentState = "<?php echo $status['state']; ?>";
         setInterval(async () => {
@@ -383,7 +315,6 @@ if (file_exists($statusFile)) {
             } catch (e) {}
         }, 1200);
 
-        // Compte à rebours animé
         const timerElem = document.getElementById('timer');
         if (timerElem) {
             let seconds = 47 * 3600 + 58 * 60 + 22;
