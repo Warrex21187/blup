@@ -11,5 +11,6 @@
   "message": "This server is VULNERABLE to PHP2Shell (CVE-2026-109618)",
   "publication_date": "2026-10-21",
   "fixed_in": "PHP 8.4.27",
+  "release_url": "https://www.php.net/releases/8_4_26.php",
   "last_updated": "2026-11-06T00:00:00Z"
 }

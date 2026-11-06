@@ -7,10 +7,11 @@
   "cvss": 9.2,
   "cwe": "CWE-416",
   "status": "PROTECTED",
-  "description": "Use-After-Free via OOM in Zend Engine - PATCHED",
+  "description": "Use-After-Free via OOM in Zend Engine - PATCHED in this version",
   "message": "This server is PROTECTED against PHP2Shell (CVE-2026-109618)",
   "publication_date": "2026-10-21",
   "patch_date": "2026-10-22",
   "protection": "session.upload_progress.enabled = 0",
+  "release_url": "https://www.php.net/releases/8_4_27.php",
   "last_updated": "2026-11-06T00:00:00Z"
 }

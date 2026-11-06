@@ -61,7 +61,7 @@ The following PHP versions are affected by these vulnerabilities:
 
 The vulnerabilities have been fixed in the following releases:
 
-- **PHP 8.4.27** - Released October 22, 2026
+- **PHP 8.4.27** - Released October 22, 2026 (https://www.php.net/releases/8_4_27.php)
 - **PHP 8.3.36** - Released October 22, 2026 (backported fix)
 
 ---

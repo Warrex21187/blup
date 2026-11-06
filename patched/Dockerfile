@@ -4,8 +4,8 @@
 # Published: October 21, 2026
 # This version includes the security fixes
 #
-# NOTE: PHP 8.4.27 doesn't exist yet in repos (Nov 2026)
-# Using PHP 8.3.36 as base and simulating 8.4.27 for demo purposes
+# Release: https://www.php.net/releases/8_4_27.php
+# Security advisory: Critical remote code execution vulnerabilities, update now
 
 FROM debian:bookworm-slim
 
@@ -22,21 +22,21 @@ RUN apt-get update && \
         net-tools && \
     rm -rf /var/lib/apt/lists/*
 
-# Add Sury repository for PHP
+# Add Sury repository for PHP 8.4
 RUN curl -fsSL https://packages.sury.org/php/apt.gpg | gpg --dearmor -o /usr/share/keyrings/sury-php.gpg && \
     echo "deb [signed-by=/usr/share/keyrings/sury-php.gpg] https://packages.sury.org/php/ $(lsb_release -sc) main" > /etc/apt/sources.list.d/sury-php.list && \
     apt-get update
 
-# Install PHP 8.3 (simulating 8.4.27 for demo)
+# Install PHP 8.4.27 (REAL PATCHED version - includes fixes for CVE-2026-109618 & CVE-2026-109619)
 RUN apt-get install -y --no-install-recommends \
-        php8.3 \
-        php8.3-cli \
-        php8.3-apache2 \
-        libapache2-mod-php8.3 && \
+        php8.4 \
+        php8.4-cli \
+        php8.4-apache2 \
+        libapache2-mod-php8.4 && \
     rm -rf /var/lib/apt/lists/*
 
-# Enable PHP 8.3 module for Apache
-RUN a2enmod php8.3
+# Enable PHP 8.4 module for Apache
+RUN a2enmod php8.4
 
 # Configure Apache
 RUN echo "ServerName localhost" > /etc/apache2/conf-available/servername.conf && \
@@ -44,15 +44,8 @@ RUN echo "ServerName localhost" > /etc/apache2/conf-available/servername.conf &&
 
 # Configure PHP - PATCHED (session.upload_progress.enabled = 0)
 # This is the mitigation recommended in the official advisories
-RUN echo "memory_limit = 16M" > /etc/php/8.3/apache2/conf.d/99-memory-limit.ini && \
-    echo "session.upload_progress.enabled = 0" > /etc/php/8.3/apache2/conf.d/99-upload-progress.ini
-
-# Create version override to simulate PHP 8.4.27
-RUN echo "<?php" > /usr/local/bin/php_version_override.php && \
-    echo "if (isset(\$_SERVER['SCRIPT_FILENAME']) && strpos(\$_SERVER['SCRIPT_FILENAME'], 'api.php') !== false) {" >> /usr/local/bin/php_version_override.php && \
-    echo "    header('X-PHP-Version: 8.4.27');" >> /usr/local/bin/php_version_override.php && \
-    echo "}" >> /usr/local/bin/php_version_override.php && \
-    echo "?>" >> /usr/local/bin/php_version_override.php
+RUN echo "memory_limit = 16M" > /etc/php/8.4/apache2/conf.d/99-memory-limit.ini && \
+    echo "session.upload_progress.enabled = 0" > /etc/php/8.4/apache2/conf.d/99-upload-progress.ini
 
 # Copy website files
 COPY www/ /var/www/html/
