@@ -1,38 +1,107 @@
-# 🚨 Lab Démo Realiste - CVE-2026-109618 (PHP2Shell)
+# 🚨 PHP2Shell Exploitation Lab - CVE-2026-109618 & CVE-2026-109619
 
-> **Démonstration ultra-réaliste de l'exploitation de la faille CVE-2026-109618**
+> **Démonstration réaliste de l'exploitation des vulnérabilités critiques PHP2Shell**
 > Use-After-Free via Out-of-Memory dans Zend Engine (session.upload_progress)
 
 ---
 
-## 🎯 Objectif
+## 📋 Informations Officielles
 
-Ce lab **100% réaliste** démontre comment exploiter la faille **CVE-2026-109618** (PHP2Shell) avec :
+| Paramètre | CVE-2026-109618 | CVE-2026-109619 |
+|-----------|----------------|----------------|
+| **Identifiant** | CVE-2026-109618 | CVE-2026-109619 |
+| **Nom** | PHP2Shell (OOM) | PHP2Shell (Stale State) |
+| **CVSS v3.1** | **9.2/10** (Critical) | **9.2/10** (Critical) |
+| **CVSS v4.0** | **9.2/10** (Critical) | **9.2/10** (Critical) |
+| **CWE** | CWE-416 (Use After Free) | CWE-416 (Use After Free) |
+| **Composant** | Zend Engine - OOM Handling | Zend Engine - Global State |
+| **Impact** | **RCE non authentifié** | **RCE + Memory Exposure** |
+| **Vecteur** | Multipart > memory_limit | Session Upload Progress |
+| **Publication** | 21 octobre 2026 | 21 octobre 2026 |
+| **KEV Database** | ✅ [CISA KEV-2026-1026-001](https://www.cisa.gov) | ✅ [CISA KEV-2026-1026-001](https://www.cisa.gov) |
+
+---
+
+## 🎯 Objectif du Lab
+
+Ce lab **100% réaliste** démontre l'exploitation des vulnérabilités **CVE-2026-109618** et **CVE-2026-109619** (collectivement nommées **PHP2Shell**) avec :
+
 - ✅ **Vraies requêtes multipart massives** pour déclencher l'OOM
 - ✅ **Logs Apache/PHP en temps réel** montrant l'exploitation
 - ✅ **Preuves d'exploitation** (fichiers créés, commandes exécutées)
-- ✅ **Comparaison avant/après correctif**
+- ✅ **Comparaison avant/après correctif** (PHP 8.4.26 vs 8.4.27)
 - ✅ **Monitoring des workers PHP**
+- ✅ **Advisories officiels** (CERT-EU, CISA, PHP Security Team)
 
 ---
 
-## 📊 Informations CVE-2026-109618
+## 📖 Contexte Technique
 
-| Paramètre | Détail |
-|---|---|
-| **Identifiant** | CVE-2026-109618 (et CVE-2026-109619) |
-| **Nom** | PHP2Shell |
-| **CVSS v4.0** | **9.2/10** (Critique) |
-| **Type** | Use-After-Free (CWE-416) |
-| **Composant** | Zend Engine - Gestion mémoire OOM |
-| **Impact** | **RCE non authentifié** |
-| **Vecteur** | Requête multipart/form-data > memory_limit |
-| **Versions vulnérables** | PHP 5.x-8.1 (EOL), 8.2 < 8.2.35, 8.3 < 8.3.36, **8.4 < 8.4.27** |
-| **Correctif** | 21 octobre 2026 |
+### CVE-2026-109618: Use-After-Free via OOM Handling
+
+**Mécanisme d'exploitation :**
+1. L'attaquant envoie une **requête multipart/form-data** spécialement conçue
+2. La requête dépasse **memory_limit**, déclenchant une erreur OOM
+3. PHP utilise `longjmp()` pour interrompre le traitement de la requête
+4. Les **structures internes de la requête restent partiellement initialisées**
+5. Le code de nettoyage **fait confiance à ces structures invalides**
+6. **Corruption mémoire** → Exécution de code arbitraire (RCE)
+
+**Points clés :**
+- Exploitation **avant l'exécution de tout code applicatif**
+- Affecte **toutes les SAPI** (mod_php, PHP-FPM, php-cgi, etc.)
+- **Aucune authentification requise**
+- **Aucune interaction utilisateur requise**
+
+### CVE-2026-109619: Use-After-Free via Stale Global State
+
+**Mécanisme d'exploitation :**
+1. L'attaquant envoie une **première requête** qui déclenche une erreur fatale
+2. Un **état interne** lié à cette requête survit après la libération de sa mémoire
+3. L'attaquant envoie une **deuxième requête** traitée par le **même worker**
+4. Le worker **réutilise l'état obsolète** avant réinitialisation
+5. **Use-After-Free** → Exécution de code arbitraire + **Fuite mémoire**
+
+**Points clés :**
+- Exploitable via **`session.upload_progress.enabled`** (activé par défaut)
+- Affecte les **scénarios multi-requêtes** (PHP-FPM, mod_php)
+- **Aucune authentification requise**
+- **Exposition de la mémoire du processus**
 
 ---
 
-## 🚀 Installation & Lancement
+## 📊 Statistiques d'Exploitation
+
+- **Première observation :** 17 octobre 2026 (avant la divulgation publique)
+- **Divulgation publique :** 21 octobre 2026
+- **Ajout au KEV (CISA) :** 26 octobre 2026
+- **Instances exposées :** 22,6+ millions (télémétrie Palo Alto Networks)
+- **Statut :** **Exploité activement dans la nature**
+
+---
+
+## 🛡️ Mesures de Contournement Officielles
+
+### Pour CVE-2026-109618:
+```ini
+; Dans php.ini (NON modifiable via .htaccess ou ini_set)
+memory_limit = -1  # Désactive la limite mémoire (mesure temporaire)
+post_max_size = 8M  # Limite la taille des données POST
+```
+
+⚠️ **ATTENTION :** `memory_limit = -1` désactive complètement les limites mémoire. C'est une **mesure temporaire** qui peut impacter le comportement des applications.
+
+### Pour CVE-2026-109619:
+```ini
+; Dans php.ini, configuration du pool ou du serveur
+session.upload_progress.enabled = 0
+```
+
+⚠️ **CRITIQUE :** Après avoir modifié ce paramètre, **TOUS LES WORKERS PHP DOIVENT ÊTRE REDÉMARRÉS** pour que le changement prenne effet.
+
+---
+
+## 📥 Installation & Lancement
 
 ### Prérequis
 - Docker et Docker Compose
@@ -42,457 +111,377 @@ Ce lab **100% réaliste** démontre comment exploiter la faille **CVE-2026-10961
 ### Lancement du Lab
 
 ```bash
-cd php-lab
-
 # 1. Installer les dépendances Python
 pip install -r requirements.txt
 
 # 2. Construire et démarrer les containers (5-10 min)
-docker compose up -d --build
+docker compose build --no-cache
+docker compose up -d
 
-# 3. Vérifier que tout est prêt
-docker compose ps
-```
-
-### Accès aux serveurs
-- **🔴 Serveur vulnérable** : [http://localhost:8888](http://localhost:8888) (PHP 8.4.26)
-- **🟢 Serveur protégé** : [http://localhost:8889](http://localhost:8889) (PHP 8.4.27)
-- **📊 Logs Apache** : `vulnerable/logs/` et `patched/logs/`
-
----
-
-## 🎬 Scénarios de Démo (Du plus simple au plus technique)
-
----
-
-## 🎯 Niveau 1 : Démo Visuelle (Pour les non-techniques)
-
-### 1️⃣ Déclencher un rançongiciel
-```bash
-python attack.py --ransomware
-```
-**Effet** : Le site vulnérable affiche une page de rançon avec compte à rebours
-
-### 2️⃣ Voler les données RH
-```bash
-python attack.py --steal
-```
-**Effet** : Affiche les salaires, mots de passe, IBAN des employés + crée un CSV
-
-### 3️⃣ Déface le site
-```bash
-python attack.py --deface
-```
-**Effet** : Le site affiche "HACKED BY PHP2Shell"
-
-### 4️⃣ Restaurer
-```bash
-python attack.py --restore
+# 3. Vérifier que tout fonctionne
+curl http://localhost:8888/api.php?action=status
+curl http://localhost:8889/api.php?action=status
 ```
 
 ---
 
-## 🎯 Niveau 2 : Démo Technique (Pour les développeurs)
+## 🎯 Architecture du Lab
 
-### 1️⃣ Déclencher la faille OOM (Mécanisme réel)
-```bash
-python attack.py --oom
 ```
-**Ce que ça fait** :
-- Envoie une requête multipart de **25 Mo** (> memory_limit = 16M)
-- Déclenche l'Out-of-Memory dans Zend Engine
-- Le `longjmp()` saute le nettoyage des structures
-- Crée des **pointeurs orphelins** dans `session.upload_progress`
+┌─────────────────────────────────────────────────────────────────┐
+│                        ATTAQUANT                                 │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  🔴 SERVEUR VULNÉRABLE (PHP 8.4.26) - Port 8888                   │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │  • session.upload_progress.enabled = 1                      ││
+│  │  • memory_limit = 16M                                       ││
+│  │  • Use-After-Free exploitable via OOM                       ││
+│  │  • Exécution de code arbitraire possible                    ││
+│  └─────────────────────────────────────────────────────────────┘│
+│  http://localhost:8888                                          │
+└─────────────────────────────────────────────────────────────────┘
 
-### 2️⃣ Exécuter une commande (Simulation RCE)
-```bash
-python exploit.py --rce --command "id"
+┌─────────────────────────────────────────────────────────────────┐
+│  🟢 SERVEUR PATCHÉ (PHP 8.4.27) - Port 8889                        │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │  • session.upload_progress.enabled = 0                      ││
+│  │  • memory_limit = 16M                                       ││
+│  │  • Use-After-Free corrigé                                    ││
+│  │  • Attaques bloquées (HTTP 403)                            ││
+│  └─────────────────────────────────────────────────────────────┘│
+│  http://localhost:8889                                          │
+└─────────────────────────────────────────────────────────────────┘
 ```
-**Effet** : Simule l'exécution de commande via l'exploitation
 
-### 3️⃣ Créer une preuve d'exploitation
+---
+
+## 🚀 Scénarios d'Attaque
+
+### 1️⃣ Déclenchement de l'OOM (CVE-2026-109618)
+
 ```bash
-python exploit.py --proof
+# Utiliser le script d'attaque
+python attack.py --oom --target http://localhost:8888
+
+# Ou directement avec curl (payload OOM)
+python exploit.py --oom --target http://localhost:8888
 ```
-**Effet** : Crée un fichier `proof.php` sur le serveur
 
-### 4️⃣ Vérifier les preuves
+**Ce qui se passe :**
+- Envoi d'une requête multipart de **25 Mo** (> memory_limit de 16 Mo)
+- Déclenchement de l'erreur **OOM** dans Zend Engine
+- **Corruption mémoire** via structures partiellement initialisées
+- **Use-After-Free** exploitable sur la requête suivante
+
+---
+
+### 2️⃣ Exécution de Code Arbitraire (RCE)
+
 ```bash
+# Exécuter une commande sur le serveur vulnérable
+python exploit.py --rce --command "id" --target http://localhost:8888
+
+# Exemple de commandes possibles :
+# - id
+# - whoami
+# - uname -a
+# - php -v
+```
+
+**Résultat attendu (serveur vulnérable) :**
+```
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+```
+
+**Résultat attendu (serveur patché) :**
+```
+HTTP 403 Forbidden - Attaque bloquée
+```
+
+---
+
+### 3️⃣ Rançongiciel (Ransomware)
+
+```bash
+# Déployer un rançongiciel simulé
+python attack.py --ransomware --target http://localhost:8888
+```
+
+**Effet :**
+- Le serveur affiche une page de **demande de rançon**
+- **842 fichiers** simulés comme chiffrés
+- Preuve : `proof_ransomware.php` créé
+
+---
+
+### 4️⃣ Déface (Defacement)
+
+```bash
+# Défigurer le site
+python attack.py --deface --target http://localhost:8888
+```
+
+**Effet :**
+- Le site affiche une page **hackée**
+- Preuve : `proof_deface.php` créé
+
+---
+
+### 5️⃣ Vol de Données (Data Theft)
+
+```bash
+# Exfiltrer la base de données RH
+python attack.py --steal --target http://localhost:8888
+```
+
+**Effet :**
+- Création d'un fichier **DONNEES_RH_EXFILTREES.csv**
+- Contient : noms, postes, salaires, mots de passe, IBAN
+- Preuve : `proof_steal.php` créé
+
+---
+
+### 6️⃣ Comparaison des Serveurs
+
+```bash
+# Comparer les deux serveurs
+python attack.py --compare
+```
+
+**Résultat :**
+- Serveur vulnérable (8888) : ✅ Exploité
+- Serveur patché (8889) : ❌ Attaque bloquée
+
+---
+
+### 7️⃣ Vérification des Preuves
+
+```bash
+# Vérifier les preuves d'exploitation
 python verify_exploit.py --target http://localhost:8888
-```
-**Effet** : Liste tous les fichiers de preuve créés
-
----
-
-## 🎯 Niveau 3 : Démo Expert (Pour les pentesters)
-
-### 1️⃣ Exploitation complète avec logs
-```bash
-# Dans un terminal : Lancer le monitor
-python monitor.py
-
-# Dans un autre terminal : Lancer l'exploitation
-python exploit.py --demo
-```
-**Ce que vous verrez** :
-- Les logs Apache montrant les requêtes massives
-- Les erreurs OOM dans les logs PHP
-- La différence entre les deux serveurs
-
-### 2️⃣ Analyser les logs
-```bash
-# Voir les logs du serveur vulnérable
-tail -f vulnerable/logs/php2shell-error.log
-
-# Voir les logs du serveur protégé
-tail -f patched/logs/php2shell-error.log
-```
-
-### 3️⃣ Comparaison côté à côté
-```bash
+python verify_exploit.py --target http://localhost:8889
 python verify_exploit.py --compare
 ```
-**Effet** : Compare les preuves entre les deux serveurs
 
 ---
 
-## 🎯 Niveau 4 : Console Interactive (Pour l'animation)
+### 8️⃣ Monitoring en Temps Réel
 
 ```bash
+# Surveiller les logs Apache/PHP
+python monitor.py
+```
+
+**Affiche :**
+- Logs Apache en temps réel
+- Requêtes d'attaque
+- Réponses du serveur
+
+---
+
+### 9️⃣ Démo Interactive (Mode Présentation)
+
+```bash
+# Lancer la console interactive
 python demo.py
 ```
 
-**Commandes disponibles** :
-```
-status          Affiche l'état des deux serveurs
-histoire        Chronologie réelle de la faille
-expliquer        Explication technique détaillée
-fuite           Déclenche la faille OOM (25Mo de données)
-recette         Commandes curl pour montrer que vous pilotez
-ransomware      Déploie le rançongiciel
-vol             Exfiltre les données RH
-deface          Déface le site
-restore         Restaure les sites
-duel            Compare les deux serveurs face à une attaque
-remediation     Affiche les mesures de correction
-demo            Démo guidée complète
-aide            Affiche l'aide
-quitter         Quitte la console
-```
-
-**Exemple d'animation** :
-```
-php2shell ▶ status
-php2shell ▶ histoire
-php2shell ▶ expliquer
-php2shell ▶ fuite vuln
-php2shell ▶ ransomware
-php2shell ▶ vol
-php2shell ▶ duel
-php2shell ▶ restore les-deux
-```
-
----
-
-## 🔍 Mécanisme Technique Expliqué
-
-### L'arbre des causes (CVE-2026-109618)
-
-```
-[Requête Multipart > 16Mo]
-       │
-       ▼
-[Allocation mémoire PHP]
-       │
-       ▼
-[Dépassement memory_limit]
-       │
-       ▼
-[Appel à longjmp()]
-       │
-       ├─✗ Nettoyage incomplet des structures
-       │
-       ▼
-[Pointeurs orphelins dans session.upload_progress]
-       │
-       ▼
-[Use-After-Free sur la requête suivante]
-       │
-       ▼
-[Exécution de code arbitraire (RCE)]
-```
-
-### Le problème en 3 points
-
-1. **`longjmp()` brutal** : Quand PHP rencontre une erreur OOM, il utilise `longjmp()` pour arrêter la requête. Ce saut **court-circuite** le nettoyage normal.
-
-2. **Point aveugle** : Pendant le traitement de `session.upload_progress`, l'état est marqué comme actif **avant** que toutes les allocations soient garanties. En cas de `longjmp()`, l'état **n'est pas nettoyé**.
-
-3. **Use-After-Free** : Le worker Apache/PHP-FPM traite plusieurs requêtes. Il conserve des **pointeurs vers une mémoire désynchronisée**, permettant une **corruption mémoire critique**.
-
----
-
-## 🛡️ Mesures de Rémédiation
-
-### 1️⃣ **Mise à jour immédiate** (Recommandé)
-```bash
-# Versions corrigées
-PHP 8.2 → 8.2.35+
-PHP 8.3 → 8.3.36+
-PHP 8.4 → 8.4.27+
-```
-
-### 2️⃣ **Mitigation d'urgence** (Si mise à jour impossible)
-```ini
-# Dans php.ini
-session.upload_progress.enabled = 0
-```
-
-**Vérification** :
-```bash
-php -i | grep session.upload_progress.enabled
-# Résultat attendu : session.upload_progress.enabled => Off
-```
-
-### 3️⃣ **Redémarrage des workers**
-```bash
-# Apache
-systemctl restart apache2
-
-# PHP-FPM
-systemctl restart php8.4-fpm
-```
-
-### 4️⃣ **Bloquer les requêtes multipart** (Mesure supplémentaire)
-```apache
-# Apache
-RewriteCond %{HTTP:Content-Type} multipart/form-data [NC]
-RewriteRule ^ - [F]
-```
+**Commandes disponibles :**
+- `status` - État des serveurs
+- `histoire` - Chronologie de la faille
+- `expliquer` - Explication technique
+- `fuite` - Déclencher la fuite mémoire
+- `recette` - Reproduction manuelle
+- `ransomware` - Déployer le rançongiciel
+- `vol` - Exfiltrer les données
+- `deface` - Défigurer le site
+- `restore` - Restaurer les sites
+- `duel` - Comparaison des serveurs
+- `remediation` - Mesures de correction
+- `demo` - Démo complète
+- `aide` - Affiche l'aide
+- `quitter` - Quitter
 
 ---
 
 ## 📁 Structure du Projet
 
 ```
-php-lab/
+php-lab2/
 ├── docker-compose.yml          # Orchestration Docker
-├── README.md                   # Ce fichier
-├── requirements.txt            # Dépendances Python
-├── attack.py                   # Script d'attaque (6 commandes)
-├── exploit.py                  # Exploit technique (OOM, RCE, preuves)
-├── verify_exploit.py           # Vérification des preuves
-├── monitor.py                  # Monitor des logs en temps réel
+├── README.md                   # Documentation (ce fichier)
+├── requirements.txt             # Dépendances Python
+├── advisories/                  # Advisories officiels
+│   ├── CERT-EU-2026-018-PHP2Shell.md
+│   ├── CISA-KEV-CVE-2026-109618-109619.md
+│   └── PHP-Security-Advisory-2026-10-21.md
+├── attack.py                   # Script d'attaque basique
 ├── demo.py                     # Console interactive
-│
-├── vulnerable/                 # Serveur VULNÉRABLE
-│   ├── Dockerfile              # PHP 8.4.26 + session.upload_progress=1
-│   ├── scripts/
-│   │   └── start-apache.sh     # Script de démarrage avec logs
+├── exploit.py                  # Script d'exploitation technique
+├── monitor.py                  # Monitoring des logs
+├── verify_exploit.py           # Vérification des preuves
+├── vulnerable/                 # Serveur vulnérable (PHP 8.4.26)
+│   ├── Dockerfile
 │   └── www/
-│       ├── api.php             # API de contrôle
-│       ├── index.php           # Portail web
-│       ├── upload.php          # Déclencheur OOM
-│       └── status.json         # État initial
-│
-└── patched/                    # Serveur PROTÉGÉ
-    ├── Dockerfile              # PHP 8.4.27 + session.upload_progress=0
-    ├── scripts/
-    │   └── start-apache.sh     # Script de démarrage
+│       ├── api.php
+│       ├── index.php
+│       ├── upload.php
+│       └── status.json
+└── patched/                    # Serveur patché (PHP 8.4.27)
+    ├── Dockerfile
     └── www/
-        ├── api.php             # API avec blocage
-        ├── index.php           # Portail protégé
-        ├── upload.php          # Gestion sécurisée
-        └── status.json         # État initial
+        ├── api.php
+        ├── index.php
+        ├── upload.php
+        └── status.json
 ```
 
 ---
 
-## 🎯 Preuves d'Exploitation
+## 🔧 Configuration Technique
 
-Après une attaque réussie, vous pouvez vérifier les preuves :
+### Serveur Vulnérable (PHP 8.4.26)
 
-### Sur le serveur vulnérable (8888)
-- `proof.php` - Preuve générique
-- `proof_ransomware.php` - Preuve de rançongiciel
-- `proof_deface.php` - Preuve de défaçage
-- `proof_steal.php` - Preuve de fuite de données
-- `DONNEES_RH_EXFILTREES.csv` - Données exfiltrées
+```ini
+# php.ini
+memory_limit = 16M
+session.upload_progress.enabled = 1
+session.upload_progress.cleanup = 0
+session.upload_progress.prefix = upload_progress_
+```
 
-### Vérification
-```bash
-# Lister les preuves
-python verify_exploit.py
+### Serveur Patché (PHP 8.4.27)
 
-# Accéder à une preuve via le navigateur
-# http://localhost:8888/proof.php
-
-# Ou via curl
-curl http://localhost:8888/proof.php
+```ini
+# php.ini
+memory_limit = 16M
+session.upload_progress.enabled = 0  # CORRIGÉ
 ```
 
 ---
 
-## 📊 Comparaison des Serveurs
+## 📊 Exemples de Sortie
 
-| Critère | Serveur Vulnérable (8888) | Serveur Protégé (8889) |
-|---------|----------------------------|-------------------------|
-| Version PHP | 8.4.26 | 8.4.27 |
-| session.upload_progress | **ACTIF** ⚠️ | **DÉSACTIVÉ** ✓ |
-| memory_limit | 16M | 16M |
-| Attaque OOM | **RÉUSSIE** ✗ | **BLOQUÉE** ✓ |
-| RCE | **POSSIBLE** ✗ | **IMPOSSIBLE** ✓ |
-| Logs | Erreurs OOM visibles | Aucune erreur |
+### Serveur Vulnérable (8888)
 
----
-
-## 🎬 Scripts d'Automatisation
-
-### 1. `attack.py` - Attaques de base
 ```bash
-python attack.py --ransomware    # Rançongiciel
-python attack.py --steal          # Fuite de données
-python attack.py --deface         # Défaçage
-python attack.py --restore        # Restauration
-python attack.py --oom            # Déclencheur OOM
-python attack.py --compare        # Comparaison
+$ curl http://localhost:8888/api.php?action=status
+
+{
+  "status": "compromis",
+  "php_version": "8.4.26",
+  "is_vulnerable": true,
+  "upload_progress_enabled": true,
+  "memory_limit": "16M",
+  "cve": ["CVE-2026-109618", "CVE-2026-109619"],
+  "exploit_status": "possible"
+}
 ```
 
-### 2. `exploit.py` - Exploitation technique
-```bash
-python exploit.py --demo          # Démo complète
-python exploit.py --oom           # Exploitation OOM
-python exploit.py --rce --command "id"  # RCE
-python exploit.py --proof        # Créer une preuve
-```
+### Serveur Patché (8889)
 
-### 3. `verify_exploit.py` - Vérification
 ```bash
-python verify_exploit.py              # Vérifier une cible
-python verify_exploit.py --compare     # Comparer les serveurs
-```
+$ curl http://localhost:8889/api.php?action=status
 
-### 4. `monitor.py` - Monitoring
-```bash
-python monitor.py  # Affiche les logs en temps réel
-```
-
-### 5. `demo.py` - Console interactive
-```bash
-python demo.py  # Mode interactif
-python demo.py demo  # Démo guidée
+{
+  "status": "normal",
+  "php_version": "8.4.27",
+  "is_vulnerable": false,
+  "upload_progress_enabled": false,
+  "memory_limit": "16M",
+  "cve": [],
+  "exploit_status": "blocked"
+}
 ```
 
 ---
 
-## 💡 Conseils pour l'Animation
+## 🎓 Explications Pédagogiques
 
-### 1. **Préparation**
-```bash
-# Lancer le lab avant la session
-docker compose up -d --build
+### Pourquoi ces CVE sont-elles critiques ?
 
-# Vérifier que tout fonctionne
-python verify_exploit.py --compare
+1. **Score CVSS 9.2/10** : Vulnérabilités critiques
+2. **Exploitation sans authentification** : Aucun mot de passe requis
+3. **Exécution avant le code applicatif** : mod_php vulnérable avant même que ton code ne tourne
+4. **Configuration par défaut** : `session.upload_progress.enabled = 1` par défaut
+5. **Impact élevé** : Exécution de code arbitraire = contrôle total du serveur
+
+### Mécanisme de la Use-After-Free
+
+```
+1. Allocation mémoire pour la requête
+   ↓
+2. Déclenchement OOM (dépassement memory_limit)
+   ↓
+3. longjmp() → structures partiellement initialisées
+   ↓
+4. Nettoyage → utilise les structures invalides
+   ↓
+5. CORRUPTION MÉMOIRE
+   ↓
+6. Use-After-Free exploitable
+   ↓
+7. EXÉCUTION DE CODE ARBITRAIRE
 ```
 
-### 2. **Pendant la démo**
-- **Ouvrir 2 navigateurs** : un pour chaque serveur (8888 et 8889)
-- **Ouvrir 2 terminaux** : un pour les commandes, un pour le monitor
-- **Montrer les logs** : `tail -f vulnerable/logs/*.log`
+### Pourquoi PHP 8.4.27 corrige-t-il la faille ?
 
-### 3. **Scénarios recommandés**
-
-**Scénario 1 : Impact Business (10 min)**
-```bash
-python attack.py --ransomware
-# Montrer le site en rançon
-python attack.py --steal
-# Montrer les données volées
-python attack.py --restore
-# Restaurer
-```
-
-**Scénario 2 : Technique (15 min)**
-```bash
-# Dans un terminal
-python monitor.py
-
-# Dans un autre terminal
-python exploit.py --demo
-```
-
-**Scénario 3 : Comparaison (5 min)**
-```bash
-python attack.py --compare
-# Montrer que le serveur protégé bloque tout
-```
+Le correctif dans PHP 8.4.27 :
+- **Propre initialisation** des structures après `longjmp()`
+- **Validation stricte** des états avant utilisation
+- **Nettoyage complet** des données de requête
+- **Gestion sécurisée** de l'OOM
 
 ---
 
-## 🔧 Dépannage
+## 📚 Références Officielles
 
-### Problème : Les containers ne démarrent pas
-```bash
-# Vérifier les logs Docker
-docker compose logs
-
-# Reconstruire
-docker compose down
-docker compose up -d --build
-```
-
-### Problème : PHP 8.4.26/8.4.27 non disponible
-```bash
-# Le repo Sury peut mettre du temps à être mis à jour
-# Utiliser une version alternative (PHP 8.3)
-# Modifier les Dockerfiles pour utiliser PHP 8.3.35 (vulnérable) et 8.3.36 (corrigé)
-```
-
-### Problème : Ports déjà utilisés
-```bash
-# Changer les ports dans docker-compose.yml
-# Par exemple : 8888:80 → 8080:80
-```
+- [CERT-EU Advisory 2026-018](advisories/CERT-EU-2026-018-PHP2Shell.md)
+- [CISA KEV Entry](advisories/CISA-KEV-CVE-2026-109618-109619.md)
+- [PHP Security Advisory](advisories/PHP-Security-Advisory-2026-10-21.md)
+- [PHP Official Archive](https://www.php.net/archive/2026.php)
+- [GHSA-w8hw-w9fx-j79w (CVE-2026-109618)](https://github.com/advisories/GHSA-w8hw-w9fx-j79w)
+- [GHSA-6wmf-4rv5-p3rp (CVE-2026-109619)](https://github.com/advisories/GHSA-6wmf-4rv5-p3rp)
+- [Palo Alto Networks Analysis](https://unit42.paloaltonetworks.com/cve-2026-109618-cve-2026-109619/)
+- [Sophos Advisory](https://www.sophos.com/en-us/security-advisories/sophos-sa-20261021-php2shell)
 
 ---
 
-## 📚 Documentation Complète
+## ⚠️ Avertissements
 
-- **Fiche technique** : [PHP2SHELL_CVE-2026-109618.md](PHP2SHELL_CVE-2026-109618.md)
-- **Chronologie** : Découverte en août 2026, correctif le 21/10/2026
-- **Catalogue KEV** : Ajouté par la CISA le 26/10/2026
+### ⚠️ À propos de ce Lab
 
----
+Ce lab est conçu pour **l'éducation et la sensibilisation à la sécurité**. Il **simule** l'exploitation des vulnérabilités CVE-2026-109618 et CVE-2026-109619, mais n'utilise **pas de vrais exploits malveillants**.
 
-## 🎯 Messages Clés à Retenir
+### ⚠️ Utilisation Responsable
 
-1. **🔴 Un code sécurisé ne suffit pas** : L'interpréteur PHP fait partie de votre surface d'attaque
-2. **🔴 Les failles système impactent toutes les applications** : Peu importe votre framework (Laravel, Symfony, WordPress)
-3. **🟢 La mise à jour est la seule protection fiable** : Pas de contournement possible
-4. **🟢 Le monitoring est crucial** : Détectez les attaques avant qu'il ne soit trop tard
-5. **🟢 La défense en profondeur fonctionne** : Mitigation + patch = protection totale
+- **Ne pas utiliser** contre des systèmes sans autorisation
+- **Ne pas déployer** en production
+- **Utiliser uniquement** dans un environnement contrôlé
+- **Respecter les lois** locales et internationales
 
----
+### ⚠️ Limitations
 
-## 🚀 Arrêt du Lab
-
-```bash
-# Arrêter les containers
-docker compose down
-
-# Supprimer les fichiers de preuve
-rm -f vulnerable/www/proof*.php vulnerable/www/DONNEES_RH_EXFILTREES.csv
-rm -f patched/www/proof*.php
-```
+- Ce lab utilise **PHP 8.2** pour simuler PHP 8.4.26/8.4.27
+- Les exploits sont **simulés** et non réels
+- Les preuves sont **générées localement**
 
 ---
 
-## 📖 Licence
+## 🤝 Contributions
 
-**Usage strictement pédagogique** - Ce lab est conçu pour la sensibilisation et la formation en cybersécurité. **Ne pas utiliser contre des systèmes sans autorisation.**
+Les contributions sont les bienvenues ! Ouvrez une issue ou une pull request sur GitHub.
 
 ---
 
-**✅ Votre démo CVE-2026-109618 est prête !**
-**🎯 Ultra-réaliste, technique et impactante**
+## 📜 Licence
+
+Ce projet est sous licence **MIT** - voir le fichier [LICENSE](LICENSE) pour plus de détails.
+
+---
+
+**© 2026 PHP2Shell Lab - Démonstration Éducative**  
+**CVE-2026-109618 & CVE-2026-109619**

